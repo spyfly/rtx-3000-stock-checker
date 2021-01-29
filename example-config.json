@@ -1,0 +1,23 @@
+{
+    "browser": {
+        "user_agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/78.0.3904.108 Safari/537.36"
+    },
+    "nvidia": {
+        "check_interval": "15s"
+    },
+    "nbb": {
+        "check_interval": "15s",
+        "cards": [
+            "3060 Ti",
+            "3070",
+            "3080",
+            "3090"
+        ]
+    },
+    "services": {
+        "telegram": {
+            "token": "xxxxxxx:yyyyyyyyyyyyyyyy",
+            "chat_id": "zzzzzzzzzzz"
+        }
+    }
+}

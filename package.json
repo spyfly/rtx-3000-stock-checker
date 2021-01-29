@@ -1,0 +1,25 @@
+{
+  "name": "rtx-3000-stock-checker",
+  "version": "0.0.1",
+  "description": "RTX 3000 Stock Checker for nvidia.de and NBB.com",
+  "main": "index.js",
+  "dependencies": {
+    "bree": "^4.1.1",
+    "node-telegram-bot-api": "^0.51.0",
+    "puppeteer": "^5.5.0"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/spyfly/rtx-3000-stock-checker.git"
+  },
+  "author": "spyfly",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/spyfly/rtx-3000-stock-checker/issues"
+  },
+  "homepage": "https://github.com/spyfly/rtx-3000-stock-checker#readme"
+}
