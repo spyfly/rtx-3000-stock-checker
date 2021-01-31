@@ -1,6 +1,6 @@
 {
   "name": "rtx-3000-stock-checker",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "RTX 3000 Stock Checker for nvidia.de and NBB.com",
   "main": "index.js",
   "dependencies": {

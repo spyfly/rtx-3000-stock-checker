@@ -13,6 +13,10 @@ const bree = new Bree({
     {
       name: 'check_nbb',
       interval: config.nbb.check_interval
+    },
+    {
+      name: 'trigger_nbb_autobuy',
+      interval: config.autobuy.interval
     }
   ]
 });
