@@ -1,13 +1,15 @@
 {
   "name": "rtx-3000-stock-checker",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "RTX 3000 Stock Checker for nvidia.de and NBB.com",
   "main": "index.js",
   "dependencies": {
     "bree": "^4.1.1",
     "level-party": "^4.0.0",
     "node-telegram-bot-api": "^0.51.0",
-    "puppeteer": "^5.5.0"
+    "playwright": "^1.9.1",
+    "puppeteer": "^5.5.0",
+    "user-agents": "^1.0.585"
   },
   "devDependencies": {},
   "scripts": {

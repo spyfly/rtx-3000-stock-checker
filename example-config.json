@@ -12,7 +12,8 @@
             "3070",
             "3080",
             "3090"
-        ]
+        ],
+        "proxies": false
     },
     "autobuy": {
         "interval": "0",
@@ -31,5 +32,8 @@
             "token": "xxxxxxx:yyyyyyyyyyyyyyyy",
             "chat_id": "zzzzzzzzzzz"
         }
-    }
+    },
+    "proxies": [
+        "a.b.c.d:3128"
+    ]
 }
