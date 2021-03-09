@@ -91,12 +91,6 @@ async function checkNbb(card) {
         }
     });
 
-    //Click away cookies banner if cookies haven't been set yet
-    if (browserDetails.cookies.length == 0) {
-        await page.waitForSelector("#uc-btn-deny-banner");
-        await page.click("#uc-btn-deny-banner");
-    }
-
     await page.screenshot({ path: 'debug_' + card.toLowerCase().replace(" ", "+") + '.png' });
 
     if (config.nbb.proxies) {
