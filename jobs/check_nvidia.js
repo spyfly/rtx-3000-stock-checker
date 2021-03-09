@@ -1,6 +1,5 @@
 process.env["NTBA_FIX_319"] = 1;
 const TelegramBot = require('node-telegram-bot-api');
-const http2 = require('http2');
 
 const config = require('../config.json');
 const bot = new TelegramBot(config.services.telegram.token);
@@ -9,32 +8,31 @@ const chat_id = config.services.telegram.chat_id;
 const level = require('level-party')
 var db = level('./status', { valueEncoding: 'json' })
 
-var data = "";
+const { curly } = require('node-libcurl');
 
 const nvShopUrl = 'https://www.nvidia.com/de-de/shop/geforce/';
 
-const client = http2.connect("https://api.nvidia.partners")
-const req = client.request({
-    ':path': '/edge/product/search?page=1&limit=9&locale=de-de',
-    'User-Agent': config.browser.user_agent
-});
+(async () => {
+    var curl_config = {
+        httpHeader: [
+            'User-Agent: ' + config.browser.user_agent
+        ]
+    };
 
-req.on("response", (headers, flags) => {
-    /*
-    for (const name in headers) {
-        console.log(`${name}: ${headers[name]}`);
+    //Get Random Proxy
+    if (config.nvidia.proxies) {
+        const imposter = require('../libs/imposter.js');
+
+        const proxy = await imposter.getRandomProxy();
+        const browserDetails = await imposter.getBrowserDetails(proxy);
+        curl_config.httpHeader = ['User-Agent: ' + browserDetails.userAgent]
+        curl_config.proxy = proxy;
     }
-    */
-});
 
-req.on("data", chunk => {
-    data += chunk;
-});
+    const { statusCode, data, headers } = await curly.get("https://api.nvidia.partners/edge/product/search?page=1&limit=9&locale=de-de", curl_config);
 
-req.on("end", () => {
-    //console.log(data);
     try {
-        const json = JSON.parse(data);
+        const json = data;
         const products = json.searchedProducts.productDetails;
         products.push(json.searchedProducts.featuredProduct);
         products.forEach(function (product) {
@@ -67,5 +65,4 @@ req.on("end", () => {
         console.log(error);
         bot.sendMessage(chat_id, "An error occurred fetching Nvidias page, cards may be available: " + nvShopUrl);
     }
-    client.close();
-});
+})();

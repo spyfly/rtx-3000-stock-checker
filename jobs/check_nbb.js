@@ -10,7 +10,7 @@ const chat_id = config.services.telegram.chat_id;
 const level = require('level-party')
 var db = level('./status', { valueEncoding: 'json' })
 
-const UserAgent = require('user-agents');
+const imposter = require('../libs/imposter.js');
 
 config.nbb.cards.forEach(async card => {
     await checkNbb(card);
@@ -30,8 +30,8 @@ async function checkNbb(card) {
 
     //Using a proxy
     if (config.nbb.proxies) {
-        proxy = await getRandomProxy();
-        browserDetails = await getBrowserDetails(proxy);
+        proxy = await imposter.getRandomProxy();
+        browserDetails = await imposter.getBrowserDetails(proxy);
         puppeteer_args.userDataDir = '/tmp/rtx-3000-stock-checker/' + proxy.replace(/\./g, "-").replace(/\:/g, "_");
         puppeteer_args.args = ['--proxy-server=http://' + proxy];
     }
@@ -69,7 +69,7 @@ async function checkNbb(card) {
         status = "blocked_by_bot_protection";
 
         //Generate new User Agent String
-        await generateNewBrowserDetails();
+        await imposter.generateNewDetails(proxy);
     } else if (data.includes(productName)) {
         //console.log("Successfully fetched product page!")
         if (data.includes("Dieses Produkt ist leider ausverkauft.") || data.includes("Leider ist dieser Artikel nicht mehr verfügbar.")) {
@@ -97,54 +97,8 @@ async function checkNbb(card) {
     await page.screenshot({ path: 'debug_' + card.toLowerCase().replace(" ", "+") + '.png' });
 
     if (config.nbb.proxies) {
-        await updateCookies(proxy, await page.cookies());
+        await imposter.updateCookies(proxy, await page.cookies());
     }
     await browser.close();
     console.log("------------------------------------------------------------------")
-}
-
-async function getBrowserDetails(proxy) {
-    var rawDetails;
-    try {
-        rawDetails = await db.get(proxy);
-        console.log("Found old details, parsing")
-        return JSON.parse(rawDetails);
-    } catch {
-        return await generateNewBrowserDetails(proxy);
-    }
-}
-
-async function generateNewBrowserDetails(proxy) {
-    console.log("Generating new Browser Details for " + proxy)
-    const userAgent = new UserAgent({ deviceCategory: 'desktop' });
-    details = {
-        userAgent: userAgent.userAgent,
-        viewport: {
-            height: userAgent.viewportHeight,
-            width: userAgent.viewportWidth
-        },
-        cookies: []
-    }
-    db.put(proxy, JSON.stringify(details))
-    return details;
-}
-
-async function updateCookies(proxy, cookies) {
-    var rawDetails;
-    try {
-        rawDetails = await db.get(proxy);
-        var updatedDetails = JSON.parse(rawDetails);
-        updatedDetails.cookies = cookies;
-        await db.put(proxy, JSON.stringify(updatedDetails));
-        console.log("Updated cookies");
-    } catch {
-        console.log("Failed storing cookies");
-    }
-}
-
-async function getRandomProxy() {
-    const proxyCount = config.proxies.length
-    const proxyId = Math.floor(Math.random() * proxyCount);
-    const proxy = config.proxies[proxyId];
-    return proxy;
 }
