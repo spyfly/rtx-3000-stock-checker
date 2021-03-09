@@ -65,8 +65,11 @@ async function checkNbb(card) {
 
     //Checking Page Contents
     if (data.includes("client has been blocked by bot protection.")) {
-        message = "NBB Bot blocked by bot protection!";
+        message = "NBB Bot blocked by bot protection! UA: " + await page.evaluate(() => navigator.userAgent);;
         status = "blocked_by_bot_protection";
+
+        //Generate new User Agent String
+        await generateNewBrowserDetails();
     } else if (data.includes(productName)) {
         //console.log("Successfully fetched product page!")
         if (data.includes("Dieses Produkt ist leider ausverkauft.") || data.includes("Leider ist dieser Artikel nicht mehr verfügbar.")) {
@@ -107,19 +110,23 @@ async function getBrowserDetails(proxy) {
         console.log("Found old details, parsing")
         return JSON.parse(rawDetails);
     } catch {
-        console.log("Generating new Browser Details for " + proxy)
-        const userAgent = new UserAgent({ deviceCategory: 'desktop' });
-        details = {
-            userAgent: userAgent.userAgent,
-            viewport: {
-                height: userAgent.viewportHeight,
-                width: userAgent.viewportWidth
-            },
-            cookies: []
-        }
-        db.put(proxy, JSON.stringify(details))
-        return details;
+        await generateNewBrowserDetails(proxy);
     }
+}
+
+async function generateNewBrowserDetails(proxy) {
+    console.log("Generating new Browser Details for " + proxy)
+    const userAgent = new UserAgent({ deviceCategory: 'desktop' });
+    details = {
+        userAgent: userAgent.userAgent,
+        viewport: {
+            height: userAgent.viewportHeight,
+            width: userAgent.viewportWidth
+        },
+        cookies: []
+    }
+    db.put(proxy, JSON.stringify(details))
+    return details;
 }
 
 async function updateCookies(proxy, cookies) {
