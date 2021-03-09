@@ -12,7 +12,7 @@ const { curly } = require('node-libcurl');
 
 const nvShopUrl = 'https://www.nvidia.com/de-de/shop/geforce/';
 
-(async () => {
+async function main() {
     var curl_config = {
         httpHeader: [
             'User-Agent: ' + config.browser.user_agent
@@ -65,4 +65,5 @@ const nvShopUrl = 'https://www.nvidia.com/de-de/shop/geforce/';
         console.log(error);
         bot.sendMessage(chat_id, "An error occurred fetching Nvidias page, cards may be available: " + nvShopUrl);
     }
-})();
+}
+main();
