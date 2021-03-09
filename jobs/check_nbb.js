@@ -40,12 +40,8 @@ async function checkNbb(card) {
     const page = await browser.newPage();
 
     if (config.nbb.proxies) {
-        try {
-            await page.setCookie(...browserDetails.cookies);
-            console.log("Set cookies");
-        } catch {
-            console.log("Failed setting cookies");
-        }
+        await page.setCookie(...browserDetails.cookies);
+        console.log("Set cookies");
     }
 
     //Messing with the User Agent and Viewport to circumvent Bot Prevention
@@ -114,7 +110,7 @@ async function getBrowserDetails(proxy) {
         console.log("Found old details, parsing")
         return JSON.parse(rawDetails);
     } catch {
-        await generateNewBrowserDetails(proxy);
+        return await generateNewBrowserDetails(proxy);
     }
 }
 
