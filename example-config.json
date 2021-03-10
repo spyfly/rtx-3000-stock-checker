@@ -16,6 +16,10 @@
         ],
         "proxies": false
     },
+    "nbb_outlet": {
+        "check_interval": "60s",
+        "proxies": false
+    },
     "autobuy": {
         "interval": "0",
         "cards": {

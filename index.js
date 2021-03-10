@@ -16,6 +16,11 @@ const bree = new Bree({
       interval: config.nbb.check_interval
     },
     {
+      name: 'check_nbb_outlet',
+      interval: config.nbb_outlet.check_interval,
+      closeWorkerAfterMs: 10000
+    },
+    {
       name: 'trigger_nbb_autobuy',
       interval: config.autobuy.interval
     }
