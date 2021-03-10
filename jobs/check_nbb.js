@@ -1,6 +1,7 @@
 process.env["NTBA_FIX_319"] = 1;
 const TelegramBot = require('node-telegram-bot-api');
 const config = require('../config.json');
+const { performance } = require('perf_hooks');
 
 const puppeteer = require('puppeteer');
 
@@ -41,7 +42,7 @@ async function checkNbb(card) {
 
     if (config.nbb.proxies) {
         await page.setCookie(...browserDetails.cookies);
-        console.log("Set cookies");
+        //console.log("Set cookies");
     }
 
     //Messing with the User Agent and Viewport to circumvent Bot Prevention
@@ -53,15 +54,17 @@ async function checkNbb(card) {
     const storeUrl = 'https://www.notebooksbilliger.de/nvidia+geforce+rtx+' + card.toLowerCase().replace(" ", "+") + '+founders+edition';
     const productName = "NVIDIA GeForce RTX " + card + " Founders Edition";
 
+    let time = performance.now();
     await page.goto(storeUrl, { waitUntil: 'load', timeout: 0 });
+    console.log(`Fetched NBB RTX ${card} Stock in ${((performance.now() - time) / 1000).toFixed(2)} s`);
 
-    console.log("Page loaded")
+    //console.log("Page loaded")
 
     const data = await page.content();
 
     var message, status;
 
-    console.log(productName);
+    //console.log(productName);
 
     //Checking Page Contents
     if (data.includes("client has been blocked by bot protection.")) {
@@ -100,5 +103,5 @@ async function checkNbb(card) {
         await imposter.updateCookies(proxy, await page.cookies());
     }
     await browser.close();
-    console.log("------------------------------------------------------------------")
+    //console.log("------------------------------------------------------------------")
 }

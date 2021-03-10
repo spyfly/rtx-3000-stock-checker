@@ -10,7 +10,7 @@ module.exports = {
         var rawDetails;
         try {
             rawDetails = await db.get(proxy);
-            console.log("Found old details, parsing")
+            //console.log("Found old details, parsing")
             return JSON.parse(rawDetails);
         } catch {
             return await this.generateNewDetails(proxy);
@@ -39,9 +39,9 @@ module.exports = {
             var updatedDetails = JSON.parse(rawDetails);
             updatedDetails.cookies = cookies;
             await db.put(proxy, JSON.stringify(updatedDetails));
-            console.log("Updated cookies");
+            //console.log("Updated cookies");
         } catch {
-            console.log("Failed storing cookies");
+            //console.log("Failed storing cookies");
         }
     },
 

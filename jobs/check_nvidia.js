@@ -1,5 +1,6 @@
 process.env["NTBA_FIX_319"] = 1;
 const axios = require('axios').default;
+const { performance } = require('perf_hooks');
 const ProxyAgent = require('proxy-agent');
 
 const TelegramBot = require('node-telegram-bot-api');
@@ -29,7 +30,9 @@ async function main() {
         axios_config.headers = { 'User-Agent': browserDetails.userAgent }
     }
 
+    let time = performance.now();
     const response = await axios.get(nvStockCheckerUrl, axios_config);
+    console.log(`Fetched NV_Stock in ${((performance.now() - time)).toFixed(0)} ms`);
 
     try {
         const json = response.data;
@@ -37,16 +40,19 @@ async function main() {
         products.push(json.searchedProducts.featuredProduct);
         products.forEach(function (product) {
             if (product.isFounderEdition) {
-                console.log(product.displayName);
+                if (config.nvidia.debug)
+                    console.log(product.displayName);
                 var status, message;
                 const card = product.displayName.replace("Nvidia RTX ", "");
 
                 if (product.prdStatus != 'out_of_stock' || product.purchaseOption != '' || product.isOffer != false) {
                     status = "in_stock";
-                    console.log("> Is in stock!")
+                    if (config.nvidia.debug)
+                        console.log("> Is in stock!")
                 } else {
                     status = "out_of_stock";
-                    console.log("> Still out of stock. | Stock Status: " + product.prdStatus)
+                    if (config.nvidia.debug)
+                        console.log("> Still out of stock. | Stock Status: " + product.prdStatus)
                 }
 
                 message = product.displayName + " is " + product.prdStatus + " at " + nvShopUrl;
@@ -58,7 +64,8 @@ async function main() {
                         db.put(db_key, status, function (err) { });
                     }
                 });
-                console.log("------------------------------------------------------------------")
+                if (config.nvidia.debug)
+                    console.log("------------------------------------------------------------------")
             }
         });
     } catch (error) {
