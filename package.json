@@ -10,10 +10,11 @@
     "node-html-parser": "^3.0.4",
     "node-telegram-bot-api": "^0.51.0",
     "proxy-agent": "^4.0.1",
-    "puppeteer": "^5.5.0",
     "user-agents": "^1.0.585"
   },
-  "devDependencies": {},
+  "devDependencies": {
+    "playwright": "^1.9.2"
+  },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },

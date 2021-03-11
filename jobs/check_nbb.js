@@ -3,7 +3,7 @@ const TelegramBot = require('node-telegram-bot-api');
 const config = require('../config.json');
 const { performance } = require('perf_hooks');
 
-const puppeteer = require('puppeteer');
+const { chromium } = require('playwright');
 
 const bot = new TelegramBot(config.services.telegram.token);
 const chat_id = config.services.telegram.chat_id;
@@ -18,38 +18,36 @@ config.nbb.cards.forEach(async card => {
 });
 
 async function checkNbb(card) {
-    var browserDetails = {
+    var browser_context = {
         userAgent: config.browser.user_agent,
         viewport: {
             width: 1280,
             height: 720
-        },
-        cookies: []
+        }
     };
+    var cookies = [];
     var puppeteer_args = {};
-    var proxy;
+    var proxy = "default";
 
     //Using a proxy
     if (config.nbb.proxies) {
         proxy = await imposter.getRandomProxy();
-        browserDetails = await imposter.getBrowserDetails(proxy);
-        puppeteer_args.userDataDir = '/tmp/rtx-3000-stock-checker/' + proxy.replace(/\./g, "-").replace(/\:/g, "_");
-        puppeteer_args.args = ['--proxy-server=http://' + proxy];
+        const browserDetails = await imposter.getBrowserDetails(proxy);
+        cookies = browserDetails.cookies;
+        browser_context.proxy = {
+            server: proxy
+        };
+        browser_context.userAgent = browserDetails.userAgent;
+        browser_context.viewport = browserDetails.viewport;
     }
 
-    const browser = await puppeteer.launch(puppeteer_args);
+    const browser = await chromium.launchPersistentContext('/tmp/rtx-3000-stock-checker/' + proxy.replace(/\./g, "-").replace(/\:/g, "_"), browser_context);
     const page = await browser.newPage();
 
     if (config.nbb.proxies) {
-        await page.setCookie(...browserDetails.cookies);
+        await browser.addCookies(cookies);
         //console.log("Set cookies");
     }
-
-    //Messing with the User Agent and Viewport to circumvent Bot Prevention
-    await page.setCacheEnabled(true);
-    await page.setViewport(browserDetails.viewport)
-    await page.setUserAgent(browserDetails.userAgent);
-
 
     const storeUrl = 'https://www.notebooksbilliger.de/nvidia+geforce+rtx+' + card.toLowerCase().replace(" ", "+") + '+founders+edition';
     const productName = "NVIDIA GeForce RTX " + card + " Founders Edition";
@@ -100,7 +98,7 @@ async function checkNbb(card) {
     await page.screenshot({ path: 'debug_' + card.toLowerCase().replace(" ", "+") + '.png' });
 
     if (config.nbb.proxies) {
-        await imposter.updateCookies(proxy, await page.cookies());
+        await imposter.updateCookies(proxy, await browser.cookies());
     }
     await browser.close();
     //console.log("------------------------------------------------------------------")
