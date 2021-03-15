@@ -8,7 +8,8 @@ const bree = new Bree({
   jobs: [
     {
       name: 'check_nvidia',
-      interval: config.nvidia.check_interval
+      interval: config.nvidia.check_interval,
+      closeWorkerAfterMs: 9500
     },
     {
       name: 'check_nbb',
@@ -16,7 +17,8 @@ const bree = new Bree({
     },
     {
       name: 'check_nbb_outlet',
-      interval: config.nbb_outlet.check_interval
+      interval: config.nbb_outlet.check_interval,
+      closeWorkerAfterMs: 9500
     },
     {
       name: 'trigger_nbb_autobuy',
