@@ -38,10 +38,6 @@ async function main() {
         const products = root.querySelectorAll('.js-ado-product-click');
         console.log(products.length + " Outlet Products found.")
 
-        //const previousProducts = JSON.parse(await db.get("nbb_outlet_products", function (err, value) {
-        //    console.log("Err")
-        //}));
-
         var deals = {};
 
         products.forEach(async product => {
@@ -58,30 +54,31 @@ async function main() {
             }
         });
 
-        db.get('nbb_outlet_deals', function (err, value) {
-            var oldDeals = {}
-            if (!err) {
-                oldDeals = JSON.parse(value);
-            }
+        var oldDeals = {}
+        try {
+            oldDeals = JSON.parse(await db.get('nbb_outlet_deals'));
+        } catch {
+            console.log("Failed fetching oldDeals (Key Value Store not initialized yet propably)");
+        }
 
-            // New Deal Notification
-            for (const [id, deal] of Object.entries(deals)) {
-                if (!oldDeals[id]) {
-                    //Notify about new Deal
-                    bot.sendMessage(chat_id, deal.title + " available for " + deal.price.toFixed(2) + "€: " + deal.href)
-                }
+        // New Deal Notification
+        for (const [id, deal] of Object.entries(deals)) {
+            if (!oldDeals[id]) {
+                //Notify about new Deal
+                await bot.sendMessage(chat_id, deal.title + " available for " + deal.price.toFixed(2) + "€: " + deal.href)
             }
+        }
 
-            // Deal gone Notification
-            for (const [id, deal] of Object.entries(oldDeals)) {
-                if (!deals[id]) {
-                    //Notify about deal being gone
-                    bot.sendMessage(chat_id, deal.title + " not available any longer 😔")
-                }
+        // Deal gone Notification
+        for (const [id, deal] of Object.entries(oldDeals)) {
+            if (!deals[id]) {
+                //Notify about deal being gone
+                await bot.sendMessage(chat_id, deal.title + " not available any longer 😔")
             }
+        }
 
-            db.put('nbb_outlet_deals', JSON.stringify(deals));
-        })
+        await db.put('nbb_outlet_deals', JSON.stringify(deals));
+        await db.close();
     } catch (error) {
         console.log(error);
         bot.sendMessage(chat_id, "An error occurred fetching the NBB Outlet Page");
