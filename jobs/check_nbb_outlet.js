@@ -38,16 +38,50 @@ async function main() {
         const products = root.querySelectorAll('.js-ado-product-click');
         console.log(products.length + " Outlet Products found.")
 
-        products.forEach(async product => {
-            const a = product.querySelector('.listing_product_title');
-            const title = a.getAttribute("title");
-            const href = a.getAttribute("href");
-            console.log(title);
+        //const previousProducts = JSON.parse(await db.get("nbb_outlet_products", function (err, value) {
+        //    console.log("Err")
+        //}));
 
-            if (title.includes("Founders Edition")) {
-                await bot.sendMessage(chat_id, title + " available at " + href);
+        var deals = {};
+
+        products.forEach(async product => {
+            const card = {}
+            card.title = product.querySelector('li').textContent;
+            card.href = product.querySelector('.listing_product_title').getAttribute("href");
+            card.price = parseFloat(product.getAttribute('data-price'));
+            const id = parseInt(product.getAttribute('data-product-id'));
+
+            //Card is a 3000 Series card or FE
+            if (card.title.includes("RTX 30") || card.title.includes("Founders Edition")) {
+                console.log(card.title);
+                deals[id] = card;
             }
         });
+
+        db.get('nbb_outlet_deals', function (err, value) {
+            var oldDeals = {}
+            if (!err) {
+                oldDeals = JSON.parse(value);
+            }
+
+            // New Deal Notification
+            for (const [id, deal] of Object.entries(deals)) {
+                if (!oldDeals[id]) {
+                    //Notify about new Deal
+                    bot.sendMessage(chat_id, deal.title + " available for " + deal.price.toFixed(2) + "€: " + deal.href)
+                }
+            }
+
+            // Deal gone Notification
+            for (const [id, deal] of Object.entries(oldDeals)) {
+                if (!deals[id]) {
+                    //Notify about deal being gone
+                    bot.sendMessage(chat_id, deal.title + " not available any longer 😔")
+                }
+            }
+
+            db.put('nbb_outlet_deals', JSON.stringify(deals));
+        })
     } catch (error) {
         console.log(error);
         bot.sendMessage(chat_id, "An error occurred fetching the NBB Outlet Page");
