@@ -20,6 +20,10 @@
         "check_interval": "60s",
         "proxies": false
     },
+    "asus_webshop": {
+        "check_interval": "60s",
+        "proxies": false
+    },
     "autobuy": {
         "interval": "0",
         "cards": {
