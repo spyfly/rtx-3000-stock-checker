@@ -26,6 +26,10 @@ const bree = new Bree({
       closeWorkerAfterMs: 9500
     },
     {
+      name: 'check_ceconomy_webshop',
+      interval: config.ceconomy.check_interval
+    },
+    {
       name: 'trigger_nbb_autobuy',
       interval: config.autobuy.interval
     }

@@ -1,5 +1,9 @@
 # rtx-3000-stock-checker
-Check RTX 3000 FE Stock on nvidia.de and NBB.com
+Checks RTX 3000 Stock on the following sites
+- nvidia.com
+- nbb.com (Outlet and FEs)
+- Asus Webshop
+- Ceconomy (MediaMarkt and Saturn)
 
 ## Installation
 1. Install NodeJS

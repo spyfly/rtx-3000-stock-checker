@@ -24,6 +24,10 @@
         "check_interval": "60s",
         "proxies": false
     },
+    "ceconomy": {
+        "check_interval": "60s",
+        "proxies": false
+    },
     "autobuy": {
         "interval": "0",
         "cards": {
