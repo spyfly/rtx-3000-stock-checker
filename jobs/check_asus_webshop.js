@@ -13,7 +13,13 @@ var db = level('./status', { valueEncoding: 'json' })
 
 const { parse } = require('node-html-parser');
 
-const asusWebShopUrl = 'https://webshop.asus.com/de/komponenten/grafikkarten/?p=1&n=48';
+const asusWebShopUrl = 'https://webshop.asus.com/de/komponenten/grafikkarten/rtx-30-serie/?p=1&n=48';
+const cardUrls = [
+    "https://webshop.asus.com/de/komponenten/grafikkarten/nvidia-serie/2828/asus-rog-strix-rtx3080-10g-gaming",
+    "https://webshop.asus.com/de/komponenten/grafikkarten/nvidia-serie/2829/asus-rog-strix-rtx3080-o10g-gaming",
+    "https://webshop.asus.com/de/komponenten/grafikkarten/nvidia-serie/2824/asus-tuf-rtx3080-10g-gaming",
+    "https://webshop.asus.com/de/komponenten/grafikkarten/nvidia-serie/2825/asus-tuf-rtx3080-o10g-gaming"
+]
 
 async function main() {
     var axios_config = {
@@ -44,14 +50,40 @@ async function main() {
             card.title = product.querySelector('.product--title').getAttribute("title");
             card.href = product.querySelector('.product--title').getAttribute("href");
             card.price = parseFloat(product.querySelector('.price--default').textContent.replace(",", "."));
-            const id = parseInt(product.querySelector('.trustpilot-widget').getAttribute("data-sku"));
+            const id = card.href;
 
-            //Card is a 3000 Series
-            if (card.title.includes("RTX 30")) {
+            console.log(card.title);
+            deals[id] = card;
+        });
+
+        axios_config.validateStatus = function (status) {
+            return (status >= 200 && status < 300) || status == 404;
+        };
+
+        for (const cardUrl of cardUrls) {
+            //Using a proxy
+            if (config.asus_webshop.proxies) {
+                const imposter = require('../libs/imposter.js');
+
+                proxy = await imposter.getRandomProxy();
+                browserDetails = await imposter.getBrowserDetails(proxy);
+                axios_config.httpsAgent = new ProxyAgent("http://" + proxy);
+                axios_config.headers = { 'User-Agent': browserDetails.userAgent }
+            }
+            const res = await axios.get(cardUrl, axios_config);
+            const out_of_stock = res.data.includes("Dieser Artikel ist leider nicht mehr verfügbar!");
+            if (!out_of_stock) {
+                const html = parse(res.data);
+                const card = {}
+                card.title = html.querySelector(".product--article-name").text
+                card.href = cardUrl;
+                card.price = parseFloat(html.querySelector('[itemprop="price"]').getAttribute("content"));
+                const id = card.href;
+
                 console.log(card.title);
                 deals[id] = card;
             }
-        });
+        }
 
         var oldDeals = {}
         try {
