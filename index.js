@@ -26,7 +26,7 @@ const bree = new Bree({
       closeWorkerAfterMs: 9500
     },
     {
-      name: 'check_ceconomy_webshop',
+      name: 'check_ceconomy',
       interval: config.ceconomy.check_interval
     },
     {
