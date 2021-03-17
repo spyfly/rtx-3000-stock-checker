@@ -19,7 +19,7 @@ const imposter = require('../libs/imposter.js');
     tasks.push(checkCeconomy(0));
 
     //Check Mediamarkt
-    tasks.push(await checkCeconomy(1));
+    tasks.push(checkCeconomy(1));
 
     await Promise.all(tasks);
     await db.close();
