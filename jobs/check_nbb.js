@@ -13,9 +13,15 @@ var db = level('./status', { valueEncoding: 'json' })
 
 const imposter = require('../libs/imposter.js');
 
-config.nbb.cards.forEach(async card => {
-    await checkNbb(card);
-});
+(async () => {
+    var tasks = [];
+    config.nbb.cards.forEach(card => {
+        tasks.push(checkNbb(card));
+    });
+
+    await Promise.all(tasks);
+    await db.close();
+})();
 
 async function checkNbb(card) {
     var browser_context = {
