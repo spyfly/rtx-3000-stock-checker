@@ -14,14 +14,10 @@ var db = level('./status', { valueEncoding: 'json' })
 const { parse } = require('node-html-parser');
 
 const asusWebShopUrl = 'https://webshop.asus.com/de/komponenten/grafikkarten/rtx-30-serie/?p=1&n=48';
-const cardUrls = [
-    "https://webshop.asus.com/de/komponenten/grafikkarten/nvidia-serie/2828/asus-rog-strix-rtx3080-10g-gaming",
-    "https://webshop.asus.com/de/komponenten/grafikkarten/nvidia-serie/2829/asus-rog-strix-rtx3080-o10g-gaming",
-    "https://webshop.asus.com/de/komponenten/grafikkarten/nvidia-serie/2824/asus-tuf-rtx3080-10g-gaming",
-    "https://webshop.asus.com/de/komponenten/grafikkarten/nvidia-serie/2825/asus-tuf-rtx3080-o10g-gaming"
-]
 
 async function main() {
+    const cardUrls = await getCardUrls();
+
     var axios_config = {
         headers: { 'User-Agent': config.browser.user_agent }
     }
@@ -36,14 +32,16 @@ async function main() {
         axios_config.headers = { 'User-Agent': browserDetails.userAgent }
     }
 
-    const response = await axios.get(asusWebShopUrl, axios_config);
+    //const response = await axios.get(asusWebShopUrl, axios_config);
 
     try {
+        var deals = {};
+
+        /*
         const root = parse(response.data);
         const productsBox = root.querySelector('.listing');
         const products = productsBox.querySelectorAll('.product--info');
         console.log(products.length + " Products found.")
-        var deals = {};
 
         products.forEach(async product => {
             const card = {}
@@ -55,6 +53,7 @@ async function main() {
             console.log(card.title);
             deals[id] = card;
         });
+        */
 
         axios_config.validateStatus = function (status) {
             return (status >= 200 && status < 300) || status == 404;
@@ -108,12 +107,71 @@ async function main() {
             }
         }
 
+        console.log("Checked " + cardUrls.length + " Asus Product Pages")
         await db.put('asus_webshop_deals', JSON.stringify(deals));
         await db.close();
     } catch (error) {
         console.log(error);
         bot.sendMessage(chat_id, "An error occurred fetching the Asus Webshop Page");
     }
+}
+
+async function getCardUrls() {
+    var cardUrlsLastUpdate = 0
+    try {
+        cardUrlsLastUpdate = JSON.parse(await db.get('asus_webshop_cardurls_last_update'));
+    } catch {
+        console.log("Failed fetching asus_webshop_cardurls_last_update (Key Value Store not initialized yet propably)");
+    }
+
+    const now = Math.floor(Date.now() / 1000);
+    //Update CardUrls once per day
+    if (cardUrlsLastUpdate + 86400 > now) {
+        try {
+            cardUrls = JSON.parse(await db.get('asus_webshop_cardurls'));
+            return cardUrls;
+        } catch {
+            console.log("Failed fetching asus_webshop_cardurls (Key Value Store not initialized yet propably)");
+        }
+    }
+
+    const sitemapUrl = 'https://webshop.asus.com/de/web/sitemap/shop-1/sitemap-1.xml.gz';
+
+    const zlib = require('zlib');
+
+    var axios_config = {
+        headers: { 'User-Agent': config.browser.user_agent }
+    }
+
+    //Using a proxy
+    if (config.asus_webshop.proxies) {
+        const imposter = require('../libs/imposter.js');
+
+        proxy = await imposter.getRandomProxy();
+        browserDetails = await imposter.getBrowserDetails(proxy);
+        axios_config.httpsAgent = new ProxyAgent("http://" + proxy);
+        axios_config.headers = { 'User-Agent': browserDetails.userAgent }
+    }
+
+    var cardUrls = []
+
+    axios_config.responseType = 'arraybuffer'
+    const response = await axios.get(sitemapUrl, axios_config);
+    zlib.gunzip(response.data, async (err, buffer) => {
+        const xmlSitemap = buffer.toString()
+
+        const parser = require('fast-xml-parser');
+        const jsonSitemap = parser.parse(xmlSitemap);
+        for (const urlObj of jsonSitemap.urlset.url) {
+            if (urlObj.loc.includes("rtx30") && urlObj.loc.includes("grafikkarten"))
+                cardUrls.push(urlObj.loc)
+        }
+
+        console.log(cardUrls)
+        await db.put('asus_webshop_cardurls_last_update', now);
+        await db.put('asus_webshop_cardurls', JSON.stringify(cardUrls));
+        return cardUrls;
+    });
 }
 
 main();

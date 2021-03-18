@@ -6,6 +6,7 @@
   "dependencies": {
     "axios": "^0.21.1",
     "bree": "^4.1.1",
+    "fast-xml-parser": "^3.19.0",
     "level-party": "^4.0.0",
     "node-html-parser": "^3.0.4",
     "node-telegram-bot-api": "^0.51.0",
