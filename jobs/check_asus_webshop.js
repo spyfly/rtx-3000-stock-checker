@@ -13,8 +13,6 @@ var db = level('./status', { valueEncoding: 'json' })
 
 const { parse } = require('node-html-parser');
 
-const asusWebShopUrl = 'https://webshop.asus.com/de/komponenten/grafikkarten/rtx-30-serie/?p=1&n=48';
-
 async function main() {
     const cardUrls = await getCardUrls();
 
@@ -32,28 +30,8 @@ async function main() {
         axios_config.headers = { 'User-Agent': browserDetails.userAgent }
     }
 
-    //const response = await axios.get(asusWebShopUrl, axios_config);
-
     try {
         var deals = {};
-
-        /*
-        const root = parse(response.data);
-        const productsBox = root.querySelector('.listing');
-        const products = productsBox.querySelectorAll('.product--info');
-        console.log(products.length + " Products found.")
-
-        products.forEach(async product => {
-            const card = {}
-            card.title = product.querySelector('.product--title').getAttribute("title");
-            card.href = product.querySelector('.product--title').getAttribute("href");
-            card.price = parseFloat(product.querySelector('.price--default').textContent.replace(",", "."));
-            const id = card.href;
-
-            console.log(card.title);
-            deals[id] = card;
-        });
-        */
 
         axios_config.validateStatus = function (status) {
             return (status >= 200 && status < 300) || status == 404;
@@ -96,6 +74,10 @@ async function main() {
             if (!oldDeals[id]) {
                 //Notify about new Deal
                 await bot.sendMessage(chat_id, deal.title + " available for " + deal.price.toFixed(2) + "€: " + deal.href)
+
+                //Trigger AutoBuy
+                if (config.autobuy.enabled)
+                    axios.post(config.autobuy.url + '/trigger', { shop: "asus", deal: deal });
             }
         }
 
@@ -129,6 +111,7 @@ async function getCardUrls() {
     if (cardUrlsLastUpdate + 86400 > now) {
         try {
             cardUrls = JSON.parse(await db.get('asus_webshop_cardurls'));
+
             return cardUrls;
         } catch {
             console.log("Failed fetching asus_webshop_cardurls (Key Value Store not initialized yet propably)");

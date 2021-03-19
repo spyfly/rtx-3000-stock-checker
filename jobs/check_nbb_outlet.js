@@ -66,6 +66,10 @@ async function main() {
             if (!oldDeals[id]) {
                 //Notify about new Deal
                 await bot.sendMessage(chat_id, deal.title + " available for " + deal.price.toFixed(2) + "€: " + deal.href)
+
+                //Trigger AutoBuy
+                if (config.autobuy.enabled)
+                    axios.post(config.autobuy.url + '/trigger', { shop: "nbb", deal: deal });
             }
         }
 
