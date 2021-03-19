@@ -28,10 +28,6 @@ const bree = new Bree({
     {
       name: 'check_ceconomy',
       interval: config.ceconomy.check_interval
-    },
-    {
-      name: 'trigger_nbb_autobuy',
-      interval: config.autobuy.interval
     }
   ]
 });
