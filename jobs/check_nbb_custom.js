@@ -8,6 +8,8 @@ const { chromium } = require('playwright');
 const bot = new TelegramBot(config.services.telegram.token);
 const chat_id = config.services.telegram.chat_id;
 
+const nbb_parser = require('../libs/nbb_parser.js');
+const deal_notify = require('../libs/deal_notify.js');
 const imposter = require('../libs/imposter.js');
 const fs = require('fs/promises');
 
@@ -58,19 +60,31 @@ async function checkNbbCustom() {
     //console.log(productName);
 
     //Checking Page Contents
+    var deals = {}
     if (data.includes("client has been blocked by bot protection.")) {
         message = "NBB Bot blocked by bot protection! UA: " + await page.evaluate(() => navigator.userAgent);;
         status = "blocked_by_bot_protection";
 
+        console.log(message);
         //Generate new User Agent String
         await imposter.generateNewDetails(proxy);
-    } else if (data.includes("Es gibt keine Produkte in dieser Kategorie.")) {
-        console.log("RTX 3000 Series Cards still out of Stock")
     } else {
-        console.log("RTX 3000 Series Cards seem to be in Stock!")
-        bot.sendMessage(chat_id, 'RTX 3000 Cards in stock at NBB: https://www.notebooksbilliger.de/pc+hardware/grafikkarten/nvidia/geforce+rtx+3000+serie+nvidia');
-        await fs.writeFile('debug_nbb_rtx3000_custom_' + time + '.html', await page.content());
-        await page.screenshot({ path: 'debug_nbb_rtx3000_custom_' + time + '.png' });
+        try {
+            //Page loaded
+            if (data.includes("Es gibt keine Produkte in dieser Kategorie.")) {
+                console.log("RTX 3000 Series Cards still out of Stock")
+
+            } else {
+                console.log("RTX 3000 Series Cards seem to be in Stock at NBB!")
+                const html = await page.content();
+                deals = await nbb_parser(html);
+            }
+
+            await deal_notify(deals, 'nbb_custom_deals', 'nbb');
+        } catch (error) {
+            console.log(error);
+            bot.sendMessage(chat_id, "An error occurred fetching the NBB RTX 3000 Deals Page");
+        }
     }
 
     if (config.nbb_custom.proxies) {
