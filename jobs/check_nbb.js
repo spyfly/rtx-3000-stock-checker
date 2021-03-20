@@ -8,22 +8,34 @@ const { chromium } = require('playwright');
 const bot = new TelegramBot(config.services.telegram.token);
 const chat_id = config.services.telegram.chat_id;
 
-const level = require('level-party')
-var db = level('./status', { valueEncoding: 'json' })
-
 const imposter = require('../libs/imposter.js');
+const nbb_deals = require('../libs/nbb_deals.js');
+const deal_notify = require('../libs/deal_notify.js');
 
 (async () => {
+    const unconfirmedDeals = await nbb_deals.getUnconfirmedDeals();
+    //unconfirmedDeals[id] = {}
+    var deals = {};
+
     var tasks = [];
-    config.nbb.cards.forEach(card => {
-        tasks.push(checkNbb(card));
-    });
+    for (const [id, deal] of Object.entries(unconfirmedDeals)) {
+        const task = checkNbb(deal).then(async (status) => {
+            if (status == "in_stock") {
+                //Add Deal
+                deals[id] = deal;
+            } else if (status == "out_of_stock") {
+                //Purge Deal
+                await nbb_deals.purgeDeal(id);
+            }
+        });
+        tasks.push(task);
+    }
 
     await Promise.all(tasks);
-    await db.close();
+    await deal_notify(deals, 'nbb_deals', 'nbb');
 })();
 
-async function checkNbb(card) {
+async function checkNbb(deal) {
     var browser_context = {
         userAgent: config.browser.user_agent,
         viewport: {
@@ -32,7 +44,6 @@ async function checkNbb(card) {
         }
     };
     var cookies = [];
-    var puppeteer_args = {};
     var proxy = "default";
 
     //Using a proxy
@@ -50,17 +61,9 @@ async function checkNbb(card) {
     const browser = await chromium.launchPersistentContext('/tmp/rtx-3000-stock-checker/' + proxy.replace(/\./g, "-").replace(/\:/g, "_"), browser_context);
     const page = await browser.newPage();
 
-    if (config.nbb.proxies) {
-        await browser.addCookies(cookies);
-        //console.log("Set cookies");
-    }
-
-    const storeUrl = 'https://www.notebooksbilliger.de/nvidia+geforce+rtx+' + card.toLowerCase().replace(" ", "+") + '+founders+edition';
-    const productName = "NVIDIA GeForce RTX " + card + " Founders Edition";
-
     let time = performance.now();
-    await page.goto(storeUrl, { waitUntil: 'load', timeout: 0 });
-    console.log(`Fetched NBB RTX ${card} Stock in ${((performance.now() - time) / 1000).toFixed(2)} s`);
+    await page.goto(deal.href, { waitUntil: 'load', timeout: 0 });
+    console.log(`Fetched NBB ${deal.title} Stock in ${((performance.now() - time) / 1000).toFixed(2)} s`);
 
     //console.log("Page loaded")
 
@@ -75,37 +78,36 @@ async function checkNbb(card) {
         message = "NBB Bot blocked by bot protection! UA: " + await page.evaluate(() => navigator.userAgent);;
         status = "blocked_by_bot_protection";
 
+        //Send Message
+        console.log(message);
+        await bot.sendMessage(chat_id, message);
+
         //Generate new User Agent String
         await imposter.generateNewDetails(proxy);
-    } else if (data.includes(productName)) {
+    } else if (data.includes(deal.title)) {
         //console.log("Successfully fetched product page!")
         if (data.includes("Dieses Produkt ist leider ausverkauft.") || data.includes("Leider ist dieser Artikel nicht mehr verfügbar.")) {
-            message = "RTX " + card + " out of Stock on NBB";
+            message = deal.title + " out of Stock on NBB";
             status = "out_of_stock";
         } else {
-            message = "Buy RTX " + card + " on NBB: " + storeUrl;
+            message = deal.title + " on NBB: " + deal.href;
             status = "in_stock"
         }
     } else {
         message = "Couldn't fetch NBB product page, maybe new bot protection?";
         status = "fetch_failure"
+
+        //Send Message
+        console.log(message);
+        await bot.sendMessage(chat_id, message);
     }
 
-    console.log("> " + message)
+    //console.log("> " + message)
 
-    const db_key = card + " NBB";
-    db.get(db_key, function (err, oldStatus) {
-        if (oldStatus != status) {
-            bot.sendMessage(chat_id, message);
-            db.put(db_key, status, function (err) { });
-        }
-    });
+    await page.screenshot({ path: 'debug_' + deal.title.toLowerCase().replace(" ", "+") + '.png' });
 
-    await page.screenshot({ path: 'debug_' + card.toLowerCase().replace(" ", "+") + '.png' });
-
-    if (config.nbb.proxies) {
-        await imposter.updateCookies(proxy, await browser.cookies());
-    }
     await browser.close();
+
+    return status;
     //console.log("------------------------------------------------------------------")
 }

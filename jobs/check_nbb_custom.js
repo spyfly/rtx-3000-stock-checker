@@ -9,7 +9,7 @@ const bot = new TelegramBot(config.services.telegram.token);
 const chat_id = config.services.telegram.chat_id;
 
 const nbb_parser = require('../libs/nbb_parser.js');
-const deal_notify = require('../libs/deal_notify.js');
+const nbb_deals = require('../libs/nbb_deals.js');
 const imposter = require('../libs/imposter.js');
 const fs = require('fs/promises');
 
@@ -80,7 +80,8 @@ async function checkNbbCustom() {
                 deals = await nbb_parser(html);
             }
 
-            await deal_notify(deals, 'nbb_custom_deals', 'nbb');
+            //await deal_notify(deals, 'nbb_custom_deals', 'nbb');
+            await nbb_deals.addUnconfirmedDeals(deals);
         } catch (error) {
             console.log(error);
             bot.sendMessage(chat_id, "An error occurred fetching the NBB RTX 3000 Deals Page");
