@@ -5,11 +5,10 @@ const { performance } = require('perf_hooks');
 
 const { chromium } = require('playwright');
 
+const deal_notify = require('../libs/deal_notify.js');
+
 const bot = new TelegramBot(config.services.telegram.token);
 const chat_id = config.services.telegram.chat_id;
-
-const level = require('level-party')
-var db = level('./status', { valueEncoding: 'json' })
 
 const imposter = require('../libs/imposter.js');
 
@@ -22,7 +21,6 @@ const imposter = require('../libs/imposter.js');
     tasks.push(checkCeconomy(1));
 
     await Promise.all(tasks);
-    await db.close();
 })();
 
 async function checkCeconomy(storeId) {
@@ -146,34 +144,9 @@ async function checkCeconomy(storeId) {
             }
         }
 
-        var oldDeals = {}
-        try {
-            oldDeals = JSON.parse(await db.get(store.name + '_webshop_deals'));
-        } catch {
-            console.log("Failed fetching oldDeals (Key Value Store not initialized yet propably)");
-        }
+        //Processing Notifications
+        await deal_notify(deals, store.name + '_webshop_deals', 'ceconomy');
 
-        // New Deal Notification
-        for (const [id, deal] of Object.entries(deals)) {
-            if (!oldDeals[id]) {
-                //Notify about new Deal
-                await bot.sendMessage(chat_id, deal.title + " available for " + deal.price.toFixed(2) + "€: " + deal.href)
-
-                //Trigger AutoBuy
-                if (config.autobuy.enabled)
-                    axios.post(config.autobuy.url + '/trigger', { shop: "ceconomy", deal: deal });
-            }
-        }
-
-        // Deal gone Notification
-        for (const [id, deal] of Object.entries(oldDeals)) {
-            if (!deals[id]) {
-                //Notify about deal being gone
-                await bot.sendMessage(chat_id, deal.title + " not available any longer 😔")
-            }
-        }
-
-        await db.put(store.name + '_webshop_deals', JSON.stringify(deals));
         console.log(store.name + ` Deals processed in ${((performance.now() - time) / 1000).toFixed(2)} s`)
     } catch (error) {
         console.log(error);

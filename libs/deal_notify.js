@@ -3,7 +3,6 @@ var dateFormat = require('dateformat');
 const config = require('../config.json');
 
 const level = require('level-party')
-var db = level('./status', { valueEncoding: 'json' })
 
 const TelegramBot = require('node-telegram-bot-api');
 const bot = new TelegramBot(config.services.telegram.token);
@@ -12,6 +11,8 @@ const chat_id = config.services.telegram.chat_id;
 const axios = require('axios').default;
 
 module.exports = async function (deals, db_index, shop_name) {
+    var db = level('./status', { valueEncoding: 'json' })
+
     var oldDeals = {}
     try {
         oldDeals = JSON.parse(await db.get(db_index));
