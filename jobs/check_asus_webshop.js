@@ -68,8 +68,7 @@ async function main() {
         await deal_notify(deals, 'asus_webshop_deals', 'asus');
 
         console.log("Checked " + cardUrls.length + " Asus Product Pages")
-        await db.put('asus_webshop_deals', JSON.stringify(deals));
-        await db.close();
+        db.close();
     } catch (error) {
         console.log(error);
         bot.sendMessage(chat_id, "An error occurred fetching the Asus Webshop Page");
