@@ -11,6 +11,8 @@ const chat_id = config.services.telegram.chat_id;
 const level = require('level-party')
 var db = level('./status', { valueEncoding: 'json' })
 
+const deal_notify = require('../libs/deal_notify.js');
+
 const { parse } = require('node-html-parser');
 
 async function main() {
@@ -62,32 +64,8 @@ async function main() {
             }
         }
 
-        var oldDeals = {}
-        try {
-            oldDeals = JSON.parse(await db.get('asus_webshop_deals'));
-        } catch {
-            console.log("Failed fetching oldDeals (Key Value Store not initialized yet propably)");
-        }
-
-        // New Deal Notification
-        for (const [id, deal] of Object.entries(deals)) {
-            if (!oldDeals[id]) {
-                //Notify about new Deal
-                await bot.sendMessage(chat_id, deal.title + " available for " + deal.price.toFixed(2) + "€: " + deal.href)
-
-                //Trigger AutoBuy
-                if (config.autobuy.enabled)
-                    axios.post(config.autobuy.url + '/trigger', { shop: "asus", deal: deal });
-            }
-        }
-
-        // Deal gone Notification
-        for (const [id, deal] of Object.entries(oldDeals)) {
-            if (!deals[id]) {
-                //Notify about deal being gone
-                await bot.sendMessage(chat_id, deal.title + " not available any longer 😔")
-            }
-        }
+        //Processing Notifications
+        await deal_notify(deals, 'asus_webshop_deals', 'asus');
 
         console.log("Checked " + cardUrls.length + " Asus Product Pages")
         await db.put('asus_webshop_deals', JSON.stringify(deals));
