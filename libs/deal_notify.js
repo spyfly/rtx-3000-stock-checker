@@ -66,6 +66,9 @@ function createMessage(deal) {
     if (deal.message_id) {
         //Out of Stock
         prefix = '❌';
+
+        //Fixing Timezone
+        process.env.TZ = 'Europe/Berlin';
         suffix = ' (gone at ' + dateFormat(new Date(), "H:MM") + ')';
     }
 
