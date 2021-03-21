@@ -9,7 +9,7 @@ module.exports = async function (html) {
 
     products.forEach(async product => {
         const card = {}
-        card.title = product.querySelector('li').textContent;
+        card.title = product.querySelector('.listing_product_title').getAttribute("title");
         card.href = product.querySelector('.listing_product_title').getAttribute("href");
         card.price = parseFloat(product.getAttribute('data-price'));
         const id = parseInt(product.getAttribute('data-product-id'));
