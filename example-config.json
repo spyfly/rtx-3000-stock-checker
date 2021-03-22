@@ -16,12 +16,8 @@
         ],
         "proxies": false
     },
-    "nbb_outlet": {
+    "nbb_api": {
         "check_interval": "60s",
-        "proxies": false
-    },
-    "nbb_custom": {
-        "check_interval": "10s",
         "proxies": false
     },
     "asus_webshop": {

@@ -1,6 +1,6 @@
 process.env["NTBA_FIX_319"] = 1;
 const axios = require('axios').default;
-const ProxyAgent = require('proxy-agent');
+const { SocksProxyAgent } = require('socks-proxy-agent');
 
 const TelegramBot = require('node-telegram-bot-api');
 
@@ -28,7 +28,7 @@ async function main() {
 
         proxy = await imposter.getRandomProxy();
         browserDetails = await imposter.getBrowserDetails(proxy);
-        axios_config.httpsAgent = new ProxyAgent("http://" + proxy);
+        axios_config.httpsAgent = new SocksProxyAgent(proxy);
         axios_config.headers = { 'User-Agent': browserDetails.userAgent }
     }
 
@@ -46,7 +46,7 @@ async function main() {
 
                 proxy = await imposter.getRandomProxy();
                 browserDetails = await imposter.getBrowserDetails(proxy);
-                axios_config.httpsAgent = new ProxyAgent("http://" + proxy);
+                axios_config.httpsAgent = new SocksProxyAgent(proxy);
                 axios_config.headers = { 'User-Agent': browserDetails.userAgent }
             }
             const res = await axios.get(cardUrl, axios_config);

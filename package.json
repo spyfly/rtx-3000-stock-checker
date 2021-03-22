@@ -12,6 +12,7 @@
     "node-html-parser": "^3.0.4",
     "node-telegram-bot-api": "^0.51.0",
     "proxy-agent": "^4.0.1",
+    "socks-proxy-agent": "^5.0.0",
     "user-agents": "^1.0.585"
   },
   "devDependencies": {
