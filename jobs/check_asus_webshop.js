@@ -109,7 +109,7 @@ async function getCardUrls() {
 
         proxy = await imposter.getRandomProxy();
         browserDetails = await imposter.getBrowserDetails(proxy);
-        axios_config.httpsAgent = new ProxyAgent("http://" + proxy);
+        axios_config.httpsAgent = new SocksProxyAgent(proxy);
         axios_config.headers = { 'User-Agent': browserDetails.userAgent }
     }
 
