@@ -11,10 +11,14 @@ const chat_id = config.services.telegram.chat_id;
 const nbb_parser = require('../libs/nbb_parser.js');
 const nbb_deals = require('../libs/nbb_deals.js');
 
+function getRandom(min, max) {
+    return Math.floor(Math.random() * (max - min) + min);
+}
+
 (async () => {
     const storeUrls = {
-        outlet: 'https://www.notebooksbilliger.de/extensions/apii/filter.php?filters=on&listing=on&advisor=&box_549_7248%5B%5D=143&box_551_7248_min=&box_551_7248_max=&box_551_7248_slid=&box_65775_7248=&box_65776_7248=&action=applyFilters&category_id=7248&page=1&perPage=&sort=price&order=asc&availability=alle&eqsqid=',
-        nvidia: 'https://www.notebooksbilliger.de/extensions/apii/filter.php?filters=on&listing=on&advisor=&box_64904_2817_min=&box_64904_2817_max=&box_64904_2817_slid=&box_64906_2817_min=250&box_64906_2817_max=3000&box_64906_2817_slid=1&box_64908_2817_min=&box_64908_2817_max=&box_64908_2817_slid=&box_64910_2817=&action=applyFilters&category_id=2817&page=1&perPage=&sort=price&order=desc&availability=alle&eqsqid='
+        outlet: 'https://www.notebooksbilliger.de/extensions/apii/filter.php?filters=on&listing=on&advisor=&box_61967_22250%5B%5D=143&box_61969_22250_min=' + getRandom(50, 100) + '&box_61969_22250_max=' + getRandom(2000, 2500) + '&box_61969_22250_slid=1&box_65348_22250=&box_62049_22250=&action=applyFilters&category_id=22250&page=1&perPage=&sort=popularity&order=desc&availability=alle&eqsqid=',
+        nvidia: 'https://www.notebooksbilliger.de/extensions/apii/filter.php?filters=on&listing=on&advisor=&box_64904_2817_min=&box_64904_2817_max=&box_64904_2817_slid=&box_64906_2817_min=' + getRandom(150, 250) + '&box_64906_2817_max=' + getRandom(3000, 3500) + '&box_64906_2817_slid=1&box_64908_2817_min=&box_64908_2817_max=&box_64908_2817_slid=&box_64910_2817=&action=applyFilters&category_id=2817&page=1&perPage=&sort=price&order=desc&availability=alle&eqsqid='
     }
 
     var tasks = [];
