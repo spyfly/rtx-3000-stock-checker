@@ -68,8 +68,8 @@ function createMessage(deal) {
         prefix = '❌';
 
         //Fixing Timezone
-        process.env.TZ = 'Europe/Berlin';
-        suffix = ' (gone at ' + dateFormat(new Date(), "H:MM") + ')';
+        const goneTime = new Date().toLocaleString("de-DE", { timeZone: "Europe/Berlin" }).split(" ")[1].slice(0, -3);
+        suffix = ' (gone at ' + goneTime + ')';
     }
 
     return prefix + ' <a href="' + deal.href + '">' + deal.title + '</a> for <b>' + deal.price.toFixed(2) + '€</b>' + suffix;
