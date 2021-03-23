@@ -130,7 +130,7 @@ async function checkNbb(deal) {
 
     //console.log("> " + message)
 
-    //await page.screenshot({ path: 'debug_' + deal.title.toLowerCase().replace(" ", "+") + '.png' });
+    await page.screenshot({ path: 'screenshots/debug_' + deal.title.toLowerCase().replace(" ", "+") + '.png' });
 
     await browser.close();
 
