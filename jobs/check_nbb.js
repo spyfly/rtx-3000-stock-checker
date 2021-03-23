@@ -46,7 +46,7 @@ async function checkNbbApi(storeUrl, page) {
     }
 
     //Using a proxy
-    if (config.nbb_api.proxies) {
+    if (config.nbb.proxies) {
         const imposter = require('../libs/imposter.js');
 
         proxy = await imposter.getRandomProxy();
