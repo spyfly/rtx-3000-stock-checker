@@ -14,6 +14,32 @@ const deal_notify = require('../libs/deal_notify.js');
 
 (async () => {
     const unconfirmedDeals = await nbb_deals.getUnconfirmedDeals();
+
+    // Always check FEs
+    unconfirmedDeals[3060] = {
+        title: "NVIDIA GeForce RTX 3060 Ti Founders Edition",
+        href: "https://www.notebooksbilliger.de/nvidia+geforce+rtx+3060+ti+founders+edition",
+        price: 419.99
+    }
+
+    unconfirmedDeals[3070] = {
+        title: "NVIDIA GeForce RTX 3070 Founders Edition",
+        href: "https://www.notebooksbilliger.de/nvidia+geforce+rtx+3070+founders+edition",
+        price: 519.99
+    }
+
+    unconfirmedDeals[3080] = {
+        title: "NVIDIA GeForce RTX 3080 Founders Edition",
+        href: "https://www.notebooksbilliger.de/nvidia+geforce+rtx+3080+founders+edition",
+        price: 719.99
+    }
+
+    unconfirmedDeals[3090] = {
+        title: "NVIDIA GeForce RTX 3090 Founders Edition",
+        href: "https://www.notebooksbilliger.de/nvidia+geforce+rtx+3090+founders+edition",
+        price: 1549.99
+    }
+
     //unconfirmedDeals[id] = {}
     var deals = {};
 
