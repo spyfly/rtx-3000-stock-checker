@@ -141,7 +141,7 @@ async function checkCeconomy(storeId) {
                 }
                 deals[id] = card;
                 //console.log(stockDetail);
-                console.log(card.title + " in stock for " + price + "€ at " + store.name)
+                console.log(card.title + " in stock for " + card.price + "€ at " + store.name)
             }
         }
 
