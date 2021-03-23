@@ -7,17 +7,7 @@
         "proxies": false
     },
     "nbb": {
-        "check_interval": "15s",
-        "cards": [
-            "3060 Ti",
-            "3070",
-            "3080",
-            "3090"
-        ],
-        "proxies": false
-    },
-    "nbb_api": {
-        "check_interval": "60s",
+        "check_interval": "10s",
         "proxies": false
     },
     "asus_webshop": {

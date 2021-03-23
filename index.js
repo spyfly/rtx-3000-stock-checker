@@ -13,11 +13,7 @@ const bree = new Bree({
     },
     {
       name: 'check_nbb',
-      interval: config.nbb.check_interval
-    },
-    {
-      name: 'check_nbb_api',
-      interval: config.nbb_api.check_interval,
+      interval: config.nbb.check_interval,
       closeWorkerAfterMs: 9500
     },
     {

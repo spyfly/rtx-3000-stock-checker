@@ -1,141 +1,71 @@
 process.env["NTBA_FIX_319"] = 1;
+const axios = require('axios').default;
+const { SocksProxyAgent } = require('socks-proxy-agent');
+
 const TelegramBot = require('node-telegram-bot-api');
+
 const config = require('../config.json');
-const { performance } = require('perf_hooks');
-
-const { chromium } = require('playwright');
-
 const bot = new TelegramBot(config.services.telegram.token);
 const chat_id = config.services.telegram.chat_id;
 
-const imposter = require('../libs/imposter.js');
-const nbb_deals = require('../libs/nbb_deals.js');
+const nbb_parser = require('../libs/nbb_parser.js');
 const deal_notify = require('../libs/deal_notify.js');
 
+function getRandom(min, max) {
+    return Math.floor(Math.random() * (max - min) + min);
+}
+
 (async () => {
-    const unconfirmedDeals = await nbb_deals.getUnconfirmedDeals();
-
-    // Always check FEs
-    /*
-    unconfirmedDeals[3060] = {
-        title: "NVIDIA GeForce RTX 3060 Ti Founders Edition",
-        href: "https://www.notebooksbilliger.de/nvidia+geforce+rtx+3060+ti+founders+edition",
-        price: 419.99
+    const storeUrls = {
+        outlet: 'https://www.notebooksbilliger.de/extensions/apii/filter.php?filters=on&listing=on&advisor=&box_61967_22250%5B%5D=143&box_61969_22250_min=' + getRandom(50, 100) + '&box_61969_22250_max=' + getRandom(2000, 2500) + '&box_61969_22250_slid=1&box_65348_22250=&box_62049_22250=&action=applyFilters&category_id=22250&page=1&perPage=&sort=popularity&order=desc&availability=alle&eqsqid=',
+        nvidia: 'https://www.notebooksbilliger.de/extensions/apii/filter.php?filters=on&listing=on&advisor=&box_64904_2817_min=&box_64904_2817_max=&box_64904_2817_slid=&box_64906_2817_min=' + getRandom(150, 250) + '&box_64906_2817_max=' + getRandom(3000, 3500) + '&box_64906_2817_slid=1&box_64908_2817_min=&box_64908_2817_max=&box_64908_2817_slid=&box_64910_2817=&action=applyFilters&category_id=2817&page=1&perPage=&sort=price&order=desc&availability=alle&eqsqid=',
+        nvidia_fe: 'https://www.notebooksbilliger.de/extensions/apii/filter.php?filters=on&listing=on&advisor=&box_64904_0_min=&box_64904_0_max=&box_64904_0_slid=&box_64906_0_min=' + getRandom(150, 250) + '&box_64906_0_max=' + getRandom(3000, 3500) + '&box_64906_0_slid=1&box_64908_0_min=&box_64908_0_max=&box_64908_0_slid=&box_64910_0=&action=applyFilters&category_id=0&page=1&perPage=&sort=price&order=desc&availability=alle&eqsqid='
     }
 
-    unconfirmedDeals[3070] = {
-        title: "NVIDIA GeForce RTX 3070 Founders Edition",
-        href: "https://www.notebooksbilliger.de/nvidia+geforce+rtx+3070+founders+edition",
-        price: 519.99
-    }
-
-    unconfirmedDeals[3080] = {
-        title: "NVIDIA GeForce RTX 3080 Founders Edition",
-        href: "https://www.notebooksbilliger.de/nvidia+geforce+rtx+3080+founders+edition",
-        price: 719.99
-    }
-
-    unconfirmedDeals[3090] = {
-        title: "NVIDIA GeForce RTX 3090 Founders Edition",
-        href: "https://www.notebooksbilliger.de/nvidia+geforce+rtx+3090+founders+edition",
-        price: 1549.99
-    }
-    */
-
-    //unconfirmedDeals[id] = {}
-    var deals = {};
+    var nbbDeals = {};
 
     var tasks = [];
-    for (const [id, deal] of Object.entries(unconfirmedDeals)) {
-        const task = checkNbb(deal).then(async (status) => {
-            if (status == "in_stock") {
-                //Add Deal
-                deals[id] = deal;
-            } else if (status == "out_of_stock") {
-                //Purge Deal
-                await nbb_deals.purgeDeal(id);
-            }
-        });
+    for (const [name, storeUrl] of Object.entries(storeUrls)) {
+        const task = checkNbbApi(storeUrl, name);
         tasks.push(task);
+        task.then((deals) => {
+            Object.assign(nbbDeals, deals);
+        },
+            (err) => {
+                console.log("Failed fetching NBB " + name + " page:" + err)
+            });
     }
 
     await Promise.all(tasks);
-    await deal_notify(deals, 'nbb_deals', 'nbb');
+    await deal_notify(nbbDeals, 'nbb_deals', 'nbb');
 })();
 
-async function checkNbb(deal) {
-    var browser_context = {
-        userAgent: config.browser.user_agent,
-        viewport: {
-            width: 1280,
-            height: 720
-        }
-    };
-    var cookies = [];
-    var proxy = "default";
+async function checkNbbApi(storeUrl, page) {
+    var axios_config = {
+        headers: { 'User-Agent': config.browser.user_agent }
+    }
 
     //Using a proxy
-    if (config.nbb.proxies) {
+    if (config.nbb_api.proxies) {
+        const imposter = require('../libs/imposter.js');
+
         proxy = await imposter.getRandomProxy();
-        const browserDetails = await imposter.getBrowserDetails(proxy);
-        cookies = browserDetails.cookies;
-        browser_context.proxy = {
-            server: proxy
-        };
-        browser_context.userAgent = browserDetails.userAgent;
-        browser_context.viewport = browserDetails.viewport;
+        browserDetails = await imposter.getBrowserDetails(proxy);
+        axios_config.httpsAgent = new SocksProxyAgent(proxy);
+        axios_config.headers = { 'User-Agent': browserDetails.userAgent }
     }
 
-    const browser = await chromium.launchPersistentContext('/tmp/rtx-3000-stock-checker/' + proxy.replace(/\./g, "-").replace(/\:/g, "_"), browser_context);
-    const page = await browser.newPage();
+    const response = await axios.get(storeUrl, axios_config);
 
-    let time = performance.now();
-    await page.goto(deal.href, { waitUntil: 'load', timeout: 0 });
-    console.log(`Fetched NBB ${deal.title} Stock in ${((performance.now() - time) / 1000).toFixed(2)} s`);
-
-    //console.log("Page loaded")
-
-    const data = await page.content();
-
-    var message, status;
-
-    //console.log(productName);
-
-    //Checking Page Contents
-    if (data.includes("client has been blocked by bot protection.")) {
-        message = "NBB Bot blocked by bot protection! UA: " + await page.evaluate(() => navigator.userAgent);;
-        status = "blocked_by_bot_protection";
-
-        //Send Message
-        console.log(message);
-        await bot.sendMessage(chat_id, message);
-
-        //Generate new User Agent String
-        await imposter.generateNewDetails(proxy);
-    } else if (data.includes(deal.title)) {
-        //console.log("Successfully fetched product page!")
-        if (data.includes("Dieses Produkt ist leider ausverkauft.") || data.includes("Leider ist dieser Artikel nicht mehr verfügbar.")) {
-            message = deal.title + " out of Stock on NBB";
-            status = "out_of_stock";
-        } else {
-            message = deal.title + " on NBB: " + deal.href;
-            status = "in_stock"
-        }
-    } else {
-        message = "Couldn't fetch NBB product page, maybe new bot protection?";
-        status = "fetch_failure"
-
-        //Send Message
-        console.log(message);
-        await bot.sendMessage(chat_id, message);
+    try {
+        var deals = await nbb_parser(response.data);
+        //await deal_notify(deals, 'nbb_outlet_deals', 'nbb');
+        //await nbb_deals.addUnconfirmedDeals(deals);
+        console.log("Found " + Object.keys(deals).length + " Deals on NBB " + page + " Page")
+        return deals;
+    } catch (error) {
+        console.log(error);
+        bot.sendMessage(chat_id, "An error occurred fetching the NBB " + page + " Page");
+        return {};
     }
-
-    //console.log("> " + message)
-
-    await page.screenshot({ path: 'screenshots/debug_' + deal.title.toLowerCase().replace(" ", "+") + '.png' });
-
-    await browser.close();
-
-    return status;
-    //console.log("------------------------------------------------------------------")
 }
