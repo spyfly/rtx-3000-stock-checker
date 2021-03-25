@@ -151,7 +151,7 @@ async function checkCeconomy(storeId) {
         console.log(store.name + ` Deals processed in ${((performance.now() - time) / 1000).toFixed(2)} s`)
     } catch (error) {
         console.log(error);
-        bot.sendMessage(chat_id, "An error occurred fetching the " + store.name + " Webshop Page");
+        bot.sendMessage(chat_id, "An error occurred fetching the " + store.name + " Webshop Page: " + error.message);
     }
 
     await browser.close();
