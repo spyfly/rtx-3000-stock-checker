@@ -12,13 +12,11 @@
     "level-party": "^4.0.0",
     "node-html-parser": "^3.0.4",
     "node-telegram-bot-api": "^0.51.0",
+    "playwright": "^1.10.0",
     "playwright-extra": "^4.2.1-next.616",
     "proxy-agent": "^4.0.1",
     "socks-proxy-agent": "^5.0.0",
     "user-agents": "^1.0.585"
-  },
-  "devDependencies": {
-    "playwright": "^1.10.0"
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
