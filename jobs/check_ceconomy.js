@@ -131,7 +131,7 @@ async function checkCeconomy(storeId) {
                 } catch (error) {
                     console.log("Blacklisting IP: " + proxy);
                     await imposter.blackListProxy(proxy, store.name);
-                    await browser.close();
+                    return await browser.close();
                 }
                 await page.screenshot({ path: 'debug_' + store.name + '_chunk.png' });
             }
