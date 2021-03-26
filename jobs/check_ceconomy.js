@@ -100,7 +100,7 @@ async function checkCeconomy(storeId) {
         captcha = content.includes("Das ging uns leider zu schnell.");
         if (captcha) {
             console.log("Captcha detected on " + store.name + " page!");
-            await page.waitForSelector('.hcaptcha');
+            await page.waitForSelector('.cf-hcaptcha-container');
             const captchaSolution = await page.solveRecaptchas();
             console.log("Captcha Solution: ");
             console.log(captchaSolution);
