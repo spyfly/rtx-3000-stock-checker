@@ -74,7 +74,7 @@ async function checkCeconomy(storeId) {
     //const browser = await chromium.launchPersistentContext('/tmp/rtx-3000-stock-checker/' + proxy.replace(/\./g, "-").replace(/\:/g, "_"), browser_context);
     const browser = await puppeteer.launch({
         userDataDir: '/tmp/rtx-3000-stock-checker/' + proxy.replace(/\./g, "-").replace(/\:/g, "_"),
-        args: ['--proxy-server=' + proxy]
+        args: ['--proxy-server=' + proxy, '--no-sandbox']
     });
 
     const page = await browser.newPage();
