@@ -80,6 +80,7 @@ async function checkCeconomy(storeId) {
     const page = await browser.newPage();
     page.setUserAgent(browser_context.userAgent);
     page.setViewport(browser_context.viewport)
+    page.setExtraHTTPHeaders({ DNT: "1" });
 
     if (config.ceconomy.proxies) {
         //await browser.addCookies(cookies);
