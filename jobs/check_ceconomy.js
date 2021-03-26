@@ -86,6 +86,7 @@ async function checkCeconomy(storeId) {
         //console.log("Set cookies");
     }
 
+    var captcha = false;
     try {
         var deals = {};
 
@@ -95,7 +96,8 @@ async function checkCeconomy(storeId) {
         await page.goto(storeUrl, { waitUntil: 'load', timeout: 0 });
 
         const content = await page.content();
-        if (content.includes("Das ging uns leider zu schnell.")) {
+        captcha = content.includes("Das ging uns leider zu schnell.");
+        if (captcha) {
             console.log("Captcha detected on " + store.name + " page!");
             const captchaSolution = await page.solveRecaptchas();
             console.log("Captcha Solution: " + captchaSolution);
@@ -109,7 +111,7 @@ async function checkCeconomy(storeId) {
             bot.sendMessage(chat_id, "Solved captcha on " + store.name + " Webshop Page for IP: " + proxy);
         }
 
-        await page.screenshot({ path: 'debug_ceconomy.png' });
+        await page.screenshot({ path: 'debug_' + store.name + '.png' });
         console.log(store.name + ` Store Page loaded in ${((performance.now() - time) / 1000).toFixed(2)} s`)
         const graphQlData = await page.evaluate(() => window.__PRELOADED_STATE__.apolloState);
         var productIds = [];
@@ -183,7 +185,11 @@ async function checkCeconomy(storeId) {
         console.log(store.name + ` Deals processed in ${((performance.now() - time) / 1000).toFixed(2)} s`)
     } catch (error) {
         console.log(error);
-        bot.sendMessage(chat_id, "An error occurred fetching the " + store.name + " Webshop Page: " + error.message);
+        if (error.message.includes("Cannot read property 'apolloState' of undefined") && captcha) {
+            bot.sendMessage(chat_id, "Captcha solved incorrectly on " + store.name + " Webshop Page");
+        } else {
+            bot.sendMessage(chat_id, "An error occurred fetching the " + store.name + " Webshop Page: " + error.message);
+        }
     }
 
     await browser.close();
