@@ -45,10 +45,38 @@ module.exports = {
         }
     },
 
-    getRandomProxy: async function () {
-        const proxyCount = config.proxies.length
+    getRandomProxy: async function (blacklist = "") {
+        var proxies = config.proxies;
+        var blacklistedProxies = [];
+        if (blacklist != "") {
+            try {
+                var rawDetails = await db.get("proxy_blacklist_" + blacklist);
+                var blacklistedProxies = JSON.parse(rawDetails);
+                //Filter array
+                proxies = proxies.filter((el) => {
+                    return !blacklistedProxies.includes(el);
+                });
+            } catch {
+                console.log("Failed getting blacklisted proxies for blacklist: " + blacklist);
+            }
+        }
+        const proxyCount = proxies.length
         const proxyId = Math.floor(Math.random() * proxyCount);
-        const proxy = config.proxies[proxyId];
+        const proxy = proxies[proxyId];
         return proxy;
+    },
+    blackListProxy: async function (proxy, blacklist) {
+        var rawDetails;
+        const key = "proxy_blacklist_" + blacklist;
+        try {
+            rawDetails = await db.get(key);
+            var blackListedProxies = JSON.parse(rawDetails);
+            blackListedProxies.push(proxy);
+            await db.put(key, JSON.stringify(blackListedProxies));
+            //console.log("Updated cookies");
+        } catch {
+            await db.put(key, "[]");
+            //console.log("Failed storing cookies");
+        }
     }
 };

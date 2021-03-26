@@ -19,6 +19,9 @@ const deal_notify = require('../libs/deal_notify.js');
 const bot = new TelegramBot(config.services.telegram.token);
 const chat_id = config.services.telegram.chat_id;
 
+const level = require('level-party');
+var db = level('./status', { valueEncoding: 'json' });
+
 const imposter = require('../libs/imposter.js');
 
 (async () => {
@@ -30,6 +33,7 @@ const imposter = require('../libs/imposter.js');
     tasks.push(checkCeconomy(1));
 
     await Promise.all(tasks);
+    db.close();
 })();
 
 async function checkCeconomy(storeId) {
@@ -55,12 +59,12 @@ async function checkCeconomy(storeId) {
         }
     };
     var cookies = [];
-    var puppeteer_args = {};
+    var puppeteer_args = ['--no-sandbox'];
     var proxy = "default";
 
     //Using a proxy
     if (config.ceconomy.proxies) {
-        proxy = await imposter.getRandomProxy();
+        proxy = await imposter.getRandomProxy(store.name);
         const browserDetails = await imposter.getBrowserDetails(proxy);
         cookies = browserDetails.cookies;
         browser_context.proxy = {
@@ -69,12 +73,14 @@ async function checkCeconomy(storeId) {
         browser_context.userAgent = browserDetails.userAgent;
         browser_context.viewport = browserDetails.viewport;
         //browser_context.viewport.height = 10000;
+
+        puppeteer_args.push('--proxy-server=' + proxy);
     }
 
     //const browser = await chromium.launchPersistentContext('/tmp/rtx-3000-stock-checker/' + proxy.replace(/\./g, "-").replace(/\:/g, "_"), browser_context);
     const browser = await puppeteer.launch({
         userDataDir: '/tmp/rtx-3000-stock-checker/' + proxy.replace(/\./g, "-").replace(/\:/g, "_"),
-        args: ['--proxy-server=' + proxy, '--no-sandbox']
+        args: puppeteer_args
     });
 
     const page = await browser.newPage();
@@ -91,39 +97,9 @@ async function checkCeconomy(storeId) {
     try {
         var deals = {};
 
-        const storeUrl = 'https://' + store.url + '/de/campaign/grafikkarten-nvidia-geforce-rtx-30';
-
         let time = performance.now();
-        await page.goto(storeUrl, { waitUntil: 'load', timeout: 0 });
 
-        const content = await page.content();
-        captcha = content.includes("Das ging uns leider zu schnell.");
-        if (captcha) {
-            console.log("Captcha detected on " + store.name + " page!");
-            await page.waitForSelector('#cf-hcaptcha-container');
-            const captchaSolution = await page.solveRecaptchas();
-            console.log("Captcha Solution: ");
-            console.log(captchaSolution);
-            await page.waitForNavigation({ timeout: 5000 });
-            console.log("Navigated!");
-            bot.sendMessage(chat_id, "Solved captcha on " + store.name + " Webshop Page for IP: " + proxy);
-        }
-
-        await page.screenshot({ path: 'debug_' + store.name + '.png' });
-        console.log(store.name + ` Store Page loaded in ${((performance.now() - time) / 1000).toFixed(2)} s`)
-        const graphQlData = await page.evaluate(() => window.__PRELOADED_STATE__.apolloState);
-        var productIds = [];
-        for (const graphQl of Object.values(graphQlData)) {
-            if (graphQl.__typename == "GraphqlProductCollection") {
-                for (const item of Object.values(graphQl.items.visible)) {
-                    productIds.push(item.productId)
-                }
-
-                for (const item of Object.values(graphQl.items.hidden)) {
-                    productIds.push(item.productId)
-                }
-            }
-        }
+        const productIds = await getProductIds(page, store);
 
         var i, j, productsChunk, chunk = 30;
 
@@ -144,9 +120,21 @@ async function checkCeconomy(storeId) {
 
             const url = "https://" + store.url + "/api/v1/graphql?operationName=GetProductCollectionItems&variables=" + encodeURIComponent(JSON.stringify(itemObj)) + "&extensions=" + encodeURIComponent('{"pwa":{"salesLine":"' + store.graphQlName + '","country":"DE","language":"de"},"persistedQuery":{"version":1,"sha256Hash":"336da976d5643762fdc280b67c0479955c33794fd23e98734c651477dd8a2e4c"}}')
 
-            await page.setExtraHTTPHeaders({ 'Content-Type': 'application/json', 'apollographql-client-name': 'pwa-client', 'apollographql-client-version': '7.0.1' })
-            await page.goto(url);
-            await page.screenshot({ path: 'debug_ceconomy_chunk.png' });
+            //await page.waitForTimeout(5000);
+            await page.setExtraHTTPHeaders({ 'Content-Type': 'application/json', 'apollographql-client-name': 'pwa-client', 'apollographql-client-version': '7.1.2' })
+            const response = await page.goto(url);
+            console.log(store.name + ": " + response.status() + " | " + proxy);
+            if (response.status() != 200) {
+                try {
+                    console.log("Waiting for browser to be checked!")
+                    await page.waitForNavigation({ timeout: 15000 });
+                } catch (error) {
+                    console.log("Blacklisting IP: " + proxy);
+                    await imposter.blackListProxy(proxy, store.name);
+                    await browser.close();
+                }
+                await page.screenshot({ path: 'debug_' + store.name + '_chunk.png' });
+            }
 
             const jsonEl = await page.waitForSelector('pre');
             const htmlJSON = await page.evaluate(el => el.textContent, jsonEl)
@@ -197,4 +185,70 @@ async function checkCeconomy(storeId) {
     }
 
     await browser.close();
+}
+
+async function getProductIds(page, store) {
+    const key = store.name + '_webshop_productids';
+    var productIdsLastUpdate = 0
+    try {
+        productIdsLastUpdate = JSON.parse(await db.get(key + '_last_update'));
+    } catch {
+        console.log("Failed fetching " + key + "_last_update (Key Value Store not initialized yet propably)");
+    }
+
+    const now = Math.floor(Date.now() / 1000);
+    //Update CardUrls every hour
+    if (productIdsLastUpdate + 60 * 60 > now) {
+        try {
+            productIds = JSON.parse(await db.get(key));
+            return productIds;
+        } catch {
+            console.log("Failed fetching " + key + " (Key Value Store not initialized yet propably)");
+        }
+    }
+
+    //Fetching productIds
+    const storeUrl = 'https://' + store.url + '/de/campaign/grafikkarten-nvidia-geforce-rtx-30';
+
+    let time = performance.now();
+    await page.goto(storeUrl, { waitUntil: 'load', timeout: 0 });
+
+    const content = await page.content();
+    captcha = content.includes("Das ging uns leider zu schnell.");
+    if (captcha) {
+        console.log("Captcha detected on " + store.name + " page!");
+        console.log("Blacklisting IP: " + proxy);
+        await imposter.blackListProxy(proxy, store.name);
+        return [];
+        /*
+        await page.waitForSelector('#cf-hcaptcha-container');
+        const captchaSolution = await page.solveRecaptchas();
+        console.log("Captcha Solution: ");
+        console.log(captchaSolution);
+        await page.waitForNavigation({ timeout: 5000 });
+        console.log("Navigated!");
+        bot.sendMessage(chat_id, "Solved captcha on " + store.name + " Webshop Page for IP: " + proxy);
+        */
+    }
+
+    await page.screenshot({ path: 'debug_' + store.name + '.png' });
+    console.log(store.name + ` Store Page loaded in ${((performance.now() - time) / 1000).toFixed(2)} s`)
+    const graphQlData = await page.evaluate(() => window.__PRELOADED_STATE__.apolloState);
+    var productIds = [];
+    for (const graphQl of Object.values(graphQlData)) {
+        if (graphQl.__typename == "GraphqlProductCollection") {
+            for (const item of Object.values(graphQl.items.visible)) {
+                productIds.push(item.productId)
+            }
+
+            for (const item of Object.values(graphQl.items.hidden)) {
+                productIds.push(item.productId)
+            }
+        }
+    }
+
+    console.log(productIds)
+    await db.put(key + '_last_update', now);
+    await db.put(key, JSON.stringify(productIds));
+    return productIds;
 }
