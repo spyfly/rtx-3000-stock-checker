@@ -3,7 +3,17 @@ const TelegramBot = require('node-telegram-bot-api');
 const config = require('../config.json');
 const { performance } = require('perf_hooks');
 
-const { chromium } = require('playwright');
+const { chromium } = require('playwright-extra')
+
+const RecaptchaPlugin = require('@extra/recaptcha')
+const RecaptchaOptions = {
+    visualFeedback: true, // colorize reCAPTCHAs (violet = detected, green = solved)
+    provider: {
+        id: '2captcha',
+        token: config.services['2captcha'].token, // REPLACE THIS WITH YOUR OWN 2CAPTCHA API KEY ⚡
+    },
+}
+chromium.use(RecaptchaPlugin(RecaptchaOptions))
 
 const deal_notify = require('../libs/deal_notify.js');
 
@@ -81,6 +91,8 @@ async function checkCeconomy(storeId) {
         const content = await page.content();
         if (content.includes("Das ging uns leider zu schnell.")) {
             console.log("Captcha detected on " + store.name + " page!");
+            const captchaSolution = await page.solveRecaptchas();
+            console.log("Captcha Solution: " + captchaSolution);
         }
 
         await page.screenshot({ path: 'debug_ceconomy.png' });

@@ -4,6 +4,7 @@
   "description": "RTX 3000 Stock Checker for nvidia.de and NBB.com",
   "main": "index.js",
   "dependencies": {
+    "@extra/recaptcha": "^4.2.1-next.587",
     "axios": "^0.21.1",
     "bree": "^4.1.1",
     "dateformat": "^4.5.1",
@@ -11,12 +12,13 @@
     "level-party": "^4.0.0",
     "node-html-parser": "^3.0.4",
     "node-telegram-bot-api": "^0.51.0",
+    "playwright-extra": "^4.2.1-next.616",
     "proxy-agent": "^4.0.1",
     "socks-proxy-agent": "^5.0.0",
     "user-agents": "^1.0.585"
   },
   "devDependencies": {
-    "playwright": "^1.9.2"
+    "playwright": "^1.10.0"
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
