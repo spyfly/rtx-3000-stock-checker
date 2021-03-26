@@ -13,9 +13,10 @@ module.exports = async function (html) {
         card.href = product.querySelector('.listing_product_title').getAttribute("href");
         card.price = parseFloat(product.getAttribute('data-price'));
         const id = parseInt(product.getAttribute('data-product-id'));
+        const inStock = product.querySelector('.js-add-to-cart').innerHTML.includes('In den Warenkorb');
 
-        //Card is a 3000 Series card or FE
-        if (card.title.includes("RTX 30") || card.title.includes("Founders Edition")) {
+        //Card is a 3000 Series card
+        if (card.title.includes("RTX 30") && inStock) {
             console.log(card.title);
             deals[id] = card;
         }
