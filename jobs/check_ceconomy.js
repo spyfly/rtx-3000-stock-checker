@@ -102,7 +102,7 @@ async function checkCeconomy(storeId) {
             console.log("Captcha detected on " + store.name + " page!");
             const captchaSolution = await page.solveRecaptchas();
             console.log("Captcha Solution: " + captchaSolution);
-            await page.waitForNavigation();
+            await page.waitForNavigation({ timeout: 60000 });
             console.log("Navigated!");
             bot.sendMessage(chat_id, "Solved captcha on " + store.name + " Webshop Page for IP: " + proxy);
         }
