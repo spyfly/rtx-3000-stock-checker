@@ -99,7 +99,7 @@ async function checkCeconomy(storeId) {
 
         let time = performance.now();
 
-        const productIds = await getProductIds(page, store);
+        const productIds = await getProductIds(page, store, proxy);
 
         var i, j, productsChunk, chunk = 30;
 
@@ -187,7 +187,7 @@ async function checkCeconomy(storeId) {
     await browser.close();
 }
 
-async function getProductIds(page, store) {
+async function getProductIds(page, store, proxy) {
     const key = store.name + '_webshop_productids';
     var productIdsLastUpdate = 0
     try {
