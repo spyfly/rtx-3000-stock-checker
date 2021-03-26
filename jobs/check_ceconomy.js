@@ -182,10 +182,10 @@ async function checkCeconomy(storeId) {
     } catch (error) {
         console.log(error);
         if (error.message.includes("Cannot read property 'apolloState' of undefined") && captcha) {
-            bot.sendMessage(chat_id, "Captcha solved incorrectly on " + store.name + " Webshop Page");
-        } else if (error.message.includes("testingstuff") && captcha) {
-            bot.sendMessage(chat_id, "Captcha timed out " + store.name + " on Webshop Page for IP: " + proxy);
+            bot.sendMessage(chat_id, "Captcha solved incorrectly on " + store.name + " Webshop Page for IP: " + proxy);
+        } else if (error.message.includes("Navigation timeout of") && captcha) {
             await page.screenshot({ path: 'debug_' + store.name + '_timeout.png' });
+            bot.sendPhoto(chat_id, 'debug_' + store.name + '_timeout.png', { caption: "Captcha timed out " + store.name + " on Webshop Page for IP: " + proxy })
         } else {
             bot.sendMessage(chat_id, "An error occurred fetching the " + store.name + " Webshop Page: " + error.message);
         }
