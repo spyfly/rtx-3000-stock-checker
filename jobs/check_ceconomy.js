@@ -3,9 +3,8 @@ const TelegramBot = require('node-telegram-bot-api');
 const config = require('../config.json');
 const { performance } = require('perf_hooks');
 
-const { chromium } = require('playwright-extra')
-
-const RecaptchaPlugin = require('@extra/recaptcha')
+const puppeteer = require('puppeteer-extra')
+const RecaptchaPlugin = require('puppeteer-extra-plugin-recaptcha')
 const RecaptchaOptions = {
     visualFeedback: true, // colorize reCAPTCHAs (violet = detected, green = solved)
     provider: {
@@ -13,7 +12,7 @@ const RecaptchaOptions = {
         token: config.services['2captcha'].token, // REPLACE THIS WITH YOUR OWN 2CAPTCHA API KEY ⚡
     },
 }
-chromium.use(RecaptchaPlugin(RecaptchaOptions))
+puppeteer.use(RecaptchaPlugin(RecaptchaOptions))
 
 const deal_notify = require('../libs/deal_notify.js');
 
@@ -72,8 +71,15 @@ async function checkCeconomy(storeId) {
         //browser_context.viewport.height = 10000;
     }
 
-    const browser = await chromium.launchPersistentContext('/tmp/rtx-3000-stock-checker/' + proxy.replace(/\./g, "-").replace(/\:/g, "_"), browser_context);
+    //const browser = await chromium.launchPersistentContext('/tmp/rtx-3000-stock-checker/' + proxy.replace(/\./g, "-").replace(/\:/g, "_"), browser_context);
+    const browser = await puppeteer.launch({
+        userDataDir: '/tmp/rtx-3000-stock-checker/' + proxy.replace(/\./g, "-").replace(/\:/g, "_"),
+        args: ['--proxy-server=' + proxy]
+    });
+
     const page = await browser.newPage();
+    page.setUserAgent(browser_context.userAgent);
+    page.setViewport(browser_context.viewport)
 
     if (config.ceconomy.proxies) {
         //await browser.addCookies(cookies);
@@ -93,6 +99,9 @@ async function checkCeconomy(storeId) {
             console.log("Captcha detected on " + store.name + " page!");
             const captchaSolution = await page.solveRecaptchas();
             console.log("Captcha Solution: " + captchaSolution);
+            await page.waitForNavigation();
+            console.log("Navigated!");
+            bot.sendMessage(chat_id, "Solved captcha on " + store.name + " Webshop Page for IP: " + proxy);
         }
 
         await page.screenshot({ path: 'debug_ceconomy.png' });
@@ -134,7 +143,8 @@ async function checkCeconomy(storeId) {
             await page.goto(url);
             await page.screenshot({ path: 'debug_ceconomy_chunk.png' });
 
-            const htmlJSON = await page.textContent('pre');
+            const jsonEl = await page.waitForSelector('pre');
+            const htmlJSON = await page.evaluate(el => el.textContent, jsonEl)
             const json = JSON.parse(htmlJSON);
             const stockDetails = json.data.getProductCollectionItems.visible;
             for (const stockDetail of stockDetails) {
