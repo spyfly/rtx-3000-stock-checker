@@ -78,6 +78,11 @@ async function checkCeconomy(storeId) {
         let time = performance.now();
         await page.goto(storeUrl, { waitUntil: 'load', timeout: 0 });
 
+        const content = await page.content();
+        if (content.includes("Das ging uns leider zu schnell.")) {
+            console.log("Captcha detected on " + store.name + " page!");
+        }
+
         await page.screenshot({ path: 'debug_ceconomy.png' });
         console.log(store.name + ` Store Page loaded in ${((performance.now() - time) / 1000).toFixed(2)} s`)
         const graphQlData = await page.evaluate(() => window.__PRELOADED_STATE__.apolloState);
