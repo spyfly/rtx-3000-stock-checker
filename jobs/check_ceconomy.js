@@ -127,7 +127,11 @@ async function checkCeconomy(storeId) {
             if (response.status() != 200) {
                 try {
                     console.log("Waiting for browser to be checked!")
-                    await page.waitForNavigation({ timeout: 15000 });
+                    const resp = await page.waitForNavigation({ timeout: 15000 });
+                    if (resp.status() != 200) {
+                        console.log("Navigation failed!");
+                        throw "Navigation_failed";
+                    }
                 } catch (error) {
                     console.log("Blacklisting IP: " + proxy);
                     await imposter.blackListProxy(proxy, store.name);
