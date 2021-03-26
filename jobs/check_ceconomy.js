@@ -102,12 +102,7 @@ async function checkCeconomy(storeId) {
             console.log("Captcha detected on " + store.name + " page!");
             const captchaSolution = await page.solveRecaptchas();
             console.log("Captcha Solution: " + captchaSolution);
-            try {
-                await page.waitForNavigation();
-            } catch {
-                bot.sendMessage(chat_id, "Captcha timed out " + store.name + " on Webshop Page for IP: " + proxy);
-                await page.screenshot({ path: 'debug_' + store.name + '_timeout.png' });
-            }
+            await page.waitForNavigation();
             console.log("Navigated!");
             bot.sendMessage(chat_id, "Solved captcha on " + store.name + " Webshop Page for IP: " + proxy);
         }
@@ -188,6 +183,9 @@ async function checkCeconomy(storeId) {
         console.log(error);
         if (error.message.includes("Cannot read property 'apolloState' of undefined") && captcha) {
             bot.sendMessage(chat_id, "Captcha solved incorrectly on " + store.name + " Webshop Page");
+        } else if (error.message.includes("testingstuff") && captcha) {
+            bot.sendMessage(chat_id, "Captcha timed out " + store.name + " on Webshop Page for IP: " + proxy);
+            await page.screenshot({ path: 'debug_' + store.name + '_timeout.png' });
         } else {
             bot.sendMessage(chat_id, "An error occurred fetching the " + store.name + " Webshop Page: " + error.message);
         }
