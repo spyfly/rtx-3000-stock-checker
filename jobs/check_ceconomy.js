@@ -93,6 +93,11 @@ async function checkCeconomy(storeId) {
     page.setViewport(browser_context.viewport)
     page.setExtraHTTPHeaders({ DNT: "1" });
 
+    const apiPage = await browser.newPage();
+    apiPage.setUserAgent(browser_context.userAgent);
+    apiPage.setViewport(browser_context.viewport)
+    apiPage.setExtraHTTPHeaders({ DNT: "1" });
+
     if (config.ceconomy.proxies) {
         //await browser.addCookies(cookies);
         //console.log("Set cookies");
@@ -126,13 +131,13 @@ async function checkCeconomy(storeId) {
             const url = "https://" + store.url + "/api/v1/graphql?operationName=GetProductCollectionItems&variables=" + encodeURIComponent(JSON.stringify(itemObj)) + "&extensions=" + encodeURIComponent('{"pwa":{"salesLine":"' + store.graphQlName + '","country":"DE","language":"de"},"persistedQuery":{"version":1,"sha256Hash":"336da976d5643762fdc280b67c0479955c33794fd23e98734c651477dd8a2e4c"}}')
 
             //await page.waitForTimeout(5000);
-            await page.setExtraHTTPHeaders({ 'Content-Type': 'application/json', 'apollographql-client-name': 'pwa-client', 'apollographql-client-version': '7.1.2' })
-            const response = await page.goto(url);
+            await apiPage.setExtraHTTPHeaders({ 'Content-Type': 'application/json', 'apollographql-client-name': 'pwa-client', 'apollographql-client-version': '7.1.2' })
+            const response = await apiPage.goto(url);
             console.log(store.name + ": " + response.status() + " | " + proxy);
             if (response.status() != 200) {
                 try {
                     console.log("Waiting for browser to be checked!")
-                    const resp = await page.waitForNavigation({ timeout: 15000 });
+                    const resp = await apiPage.waitForNavigation({ timeout: 15000 });
                     if (resp.status() != 200) {
                         console.log("Navigation failed!");
                         throw "Navigation_failed";
@@ -146,14 +151,14 @@ async function checkCeconomy(storeId) {
                         //Load overview page for captcha solving
                         await getProductIds(page, store, proxy, true);
                         //Reload page
-                        await page.goto(url);
+                        await apiPage.goto(url);
                     }
                 }
-                await page.screenshot({ path: 'debug_' + store.name + '_chunk.png' });
+                await apiPage.screenshot({ path: 'debug_' + store.name + '_chunk.png' });
             }
 
-            const jsonEl = await page.waitForSelector('pre');
-            const htmlJSON = await page.evaluate(el => el.textContent, jsonEl)
+            const jsonEl = await apiPage.waitForSelector('pre');
+            const htmlJSON = await apiPage.evaluate(el => el.textContent, jsonEl)
             const json = JSON.parse(htmlJSON);
             const stockDetails = json.data.getProductCollectionItems.visible;
             for (const stockDetail of stockDetails) {
