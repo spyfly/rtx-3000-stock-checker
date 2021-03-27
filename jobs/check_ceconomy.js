@@ -134,7 +134,7 @@ async function checkCeconomy(storeId) {
             await apiPage.setExtraHTTPHeaders({ 'Content-Type': 'application/json', 'apollographql-client-name': 'pwa-client', 'apollographql-client-version': '7.1.2' })
             const response = await apiPage.goto(url);
             console.log(store.name + ": " + response.status() + " | " + proxy);
-            if (response.status() != 200) {
+            if (response.status() == 403) {
                 try {
                     console.log("Waiting for browser to be checked!")
                     const resp = await apiPage.waitForNavigation({ timeout: 15000 });
@@ -155,6 +155,9 @@ async function checkCeconomy(storeId) {
                     }
                 }
                 await apiPage.screenshot({ path: 'debug_' + store.name + '_chunk.png' });
+            } else if (response.status() == 429) {
+                console.log("Rate limited!")
+                bot.sendMessage(chat_id, "Rate limited on " + store.name + " Webshop Page for IP: " + proxy);
             }
 
             const jsonEl = await apiPage.waitForSelector('pre');
