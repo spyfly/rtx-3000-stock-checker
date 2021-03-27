@@ -145,6 +145,8 @@ async function checkCeconomy(storeId) {
                     } else {
                         //Load overview page for captcha solving
                         await getProductIds(page, store, proxy, true);
+                        //Reload page
+                        await page.goto(url);
                     }
                 }
                 await page.screenshot({ path: 'debug_' + store.name + '_chunk.png' });
@@ -212,7 +214,7 @@ async function getProductIds(page, store, proxy, override = false) {
 
     const now = Math.floor(Date.now() / 1000);
     //Update CardUrls every hour
-    if (productIdsLastUpdate + 60 * 60 > now || override) {
+    if (productIdsLastUpdate + 60 * 60 > now && !override) {
         try {
             productIds = JSON.parse(await db.get(key));
             return productIds;
