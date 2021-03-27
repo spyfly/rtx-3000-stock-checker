@@ -18,6 +18,7 @@ const deal_notify = require('../libs/deal_notify.js');
 
 const bot = new TelegramBot(config.services.telegram.token);
 const chat_id = config.services.telegram.chat_id;
+const debug_chat_id = config.services.telegram.debug_chat_id;
 
 const level = require('level-party');
 var db = level('./status', { valueEncoding: 'json' });
@@ -157,7 +158,7 @@ async function checkCeconomy(storeId) {
                 await apiPage.screenshot({ path: 'debug_' + store.name + '_chunk.png' });
             } else if (response.status() == 429) {
                 console.log("Rate limited!")
-                bot.sendMessage(chat_id, "Rate limited on " + store.name + " Webshop Page for IP: " + proxy);
+                bot.sendMessage(debug_chat_id, "Rate limited on " + store.name + " Webshop Page for IP: " + proxy);
             }
 
             const jsonEl = await apiPage.waitForSelector('pre');
@@ -198,13 +199,13 @@ async function checkCeconomy(storeId) {
         if (error.message.includes("Cannot read property 'apolloState' of undefined") && captcha) {
             //Incorrect captcha solution
             await page.screenshot({ path: 'debug_' + store.name + '_incorrect.png' });
-            bot.sendPhoto(chat_id, 'debug_' + store.name + '_incorrect.png', { caption: "Captcha solved incorrectly on " + store.name + " Webshop Page for IP: " + proxy });
+            bot.sendPhoto(debug_chat_id, 'debug_' + store.name + '_incorrect.png', { caption: "Captcha solved incorrectly on " + store.name + " Webshop Page for IP: " + proxy });
         } else if (error.message.includes("Navigation timeout of") && captcha) {
             //Captcha timeout
             await page.screenshot({ path: 'debug_' + store.name + '_timeout.png' });
-            bot.sendPhoto(chat_id, 'debug_' + store.name + '_timeout.png', { caption: "Captcha timed out " + store.name + " on Webshop Page for IP: " + proxy })
+            bot.sendPhoto(debug_chat_id, 'debug_' + store.name + '_timeout.png', { caption: "Captcha timed out " + store.name + " on Webshop Page for IP: " + proxy })
         } else {
-            bot.sendMessage(chat_id, "An error occurred fetching the " + store.name + " Webshop Page: " + error.message);
+            bot.sendMessage(debug_chat_id, "An error occurred fetching the " + store.name + " Webshop Page: " + error.message);
         }
     }
 
@@ -254,7 +255,7 @@ async function getProductIds(page, store, proxy, override = false) {
             console.log(captchaSolution);
             await page.waitForNavigation({ timeout: 10000 });
             console.log("Navigated!");
-            bot.sendMessage(chat_id, "Solved captcha on " + store.name + " Webshop Page for IP: " + proxy);
+            bot.sendMessage(debug_chat_id, "Solved captcha on " + store.name + " Webshop Page for IP: " + proxy);
         }
     }
 
