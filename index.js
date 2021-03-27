@@ -23,7 +23,8 @@ const bree = new Bree({
     },
     {
       name: 'check_ceconomy',
-      cron: config.ceconomy.cron
+      cron: config.ceconomy.cron,
+      hasSeconds: true
     }
   ]
 });
