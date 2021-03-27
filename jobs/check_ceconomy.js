@@ -65,16 +65,21 @@ async function checkCeconomy(storeId) {
     //Using a proxy
     if (config.ceconomy.proxies) {
         proxy = await imposter.getRandomProxy(store.name);
-        const browserDetails = await imposter.getBrowserDetails(proxy);
-        cookies = browserDetails.cookies;
-        browser_context.proxy = {
-            server: proxy
-        };
-        browser_context.userAgent = browserDetails.userAgent;
-        browser_context.viewport = browserDetails.viewport;
-        //browser_context.viewport.height = 10000;
+        if (proxy != undefined) {
+            const browserDetails = await imposter.getBrowserDetails(proxy);
+            cookies = browserDetails.cookies;
+            browser_context.proxy = {
+                server: proxy
+            };
+            browser_context.userAgent = browserDetails.userAgent;
+            browser_context.viewport = browserDetails.viewport;
+            //browser_context.viewport.height = 10000;
 
-        puppeteer_args.push('--proxy-server=' + proxy);
+            puppeteer_args.push('--proxy-server=' + proxy);
+        } else {
+            proxy = "default"
+            console.log("All proxies blacklisted, using no proxy!")
+        }
     }
 
     //const browser = await chromium.launchPersistentContext('/tmp/rtx-3000-stock-checker/' + proxy.replace(/\./g, "-").replace(/\:/g, "_"), browser_context);
@@ -215,7 +220,7 @@ async function getProductIds(page, store, proxy) {
     const storeUrl = 'https://' + store.url + '/de/campaign/grafikkarten-nvidia-geforce-rtx-30';
 
     let time = performance.now();
-    await page.goto(storeUrl, { waitUntil: 'load', timeout: 0 });
+    await page.goto(storeUrl, { waitUntil: 'load', timeout: 30000 });
 
     const content = await page.content();
     captcha = content.includes("Das ging uns leider zu schnell.");
