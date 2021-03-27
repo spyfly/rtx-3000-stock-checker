@@ -243,7 +243,9 @@ async function getProductIds(page, store, proxy, override = false) {
             await imposter.blackListProxy(proxy, store.name);
             return [];
         } else {
-            await page.waitForSelector('#cf-hcaptcha-container');
+            try {
+                await page.waitForSelector('#cf-hcaptcha-container', { timeout: 10000 });
+            } catch { }
             const captchaSolution = await page.solveRecaptchas();
             console.log("Captcha Solution: ");
             console.log(captchaSolution);
