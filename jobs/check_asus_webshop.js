@@ -78,7 +78,7 @@ async function main() {
 async function getCardUrls() {
     var cardUrlsLastUpdate = 0
     try {
-        cardUrlsLastUpdate = JSON.parse(await db.get('asus_webshop_cardurls_last_update'));
+        cardUrlsLastUpdate = await db.get('asus_webshop_cardurls_last_update');
     } catch {
         console.log("Failed fetching asus_webshop_cardurls_last_update (Key Value Store not initialized yet propably)");
     }
@@ -98,6 +98,8 @@ async function getCardUrls() {
     const sitemapUrl = 'https://webshop.asus.com/de/web/sitemap/shop-1/sitemap-1.xml.gz';
 
     const zlib = require('zlib');
+    const util = require('util');
+    const gunzip = util.promisify(zlib.gunzip);
 
     var axios_config = {
         headers: { 'User-Agent': config.browser.user_agent }
@@ -117,21 +119,20 @@ async function getCardUrls() {
 
     axios_config.responseType = 'arraybuffer'
     const response = await axios.get(sitemapUrl, axios_config);
-    zlib.gunzip(response.data, async (err, buffer) => {
-        const xmlSitemap = buffer.toString()
 
-        const parser = require('fast-xml-parser');
-        const jsonSitemap = parser.parse(xmlSitemap);
-        for (const urlObj of jsonSitemap.urlset.url) {
-            if (urlObj.loc.includes("rtx30") && urlObj.loc.includes("grafikkarten"))
-                cardUrls.push(urlObj.loc)
-        }
+    const xmlSitemap = (await gunzip(response.data)).toString();
+    const parser = require('fast-xml-parser');
+    const jsonSitemap = parser.parse(xmlSitemap);
+    for (const urlObj of jsonSitemap.urlset.url) {
+        if (urlObj.loc.includes("rtx30") && urlObj.loc.includes("grafikkarten"))
+            cardUrls.push(urlObj.loc)
+    }
 
-        console.log(cardUrls)
-        await db.put('asus_webshop_cardurls_last_update', now);
-        await db.put('asus_webshop_cardurls', JSON.stringify(cardUrls));
-        return cardUrls;
-    });
+    console.log(cardUrls)
+    await db.put('asus_webshop_cardurls_last_update', now);
+    await db.put('asus_webshop_cardurls', JSON.stringify(cardUrls));
+
+    return cardUrls;
 }
 
 main();
