@@ -138,7 +138,7 @@ async function checkCeconomy(storeId) {
             if (response.status() == 403) {
                 try {
                     console.log("Waiting for browser to be checked!")
-                    const resp = await apiPage.waitForNavigation({ timeout: 15000 });
+                    const resp = await apiPage.waitForNavigation({ timeout: 5000 });
                     if (resp.status() != 200) {
                         console.log("Navigation failed!");
                         throw "Navigation_failed";
@@ -248,12 +248,12 @@ async function getProductIds(page, store, proxy, override = false) {
             return [];
         } else {
             try {
-                await page.waitForSelector('#cf-hcaptcha-container', { timeout: 10000 });
+                await page.waitForSelector('#cf-hcaptcha-container', { timeout: 5000 });
             } catch { }
             const captchaSolution = await page.solveRecaptchas();
             console.log("Captcha Solution: ");
             console.log(captchaSolution);
-            await page.waitForNavigation({ timeout: 10000 });
+            await page.waitForNavigation({ timeout: 5000 });
             console.log("Navigated!");
             bot.sendMessage(debug_chat_id, "Solved captcha on " + store.name + " Webshop Page for IP: " + proxy);
         }
