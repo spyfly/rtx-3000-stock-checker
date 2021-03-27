@@ -138,9 +138,19 @@ async function checkCeconomy(storeId) {
                         throw "Navigation_failed";
                     }
                 } catch (error) {
-                    console.log("Blacklisting IP: " + proxy);
-                    await imposter.blackListProxy(proxy, store.name);
-                    return await browser.close();
+                    if (proxy !== "default") {
+                        console.log("Blacklisting IP: " + proxy);
+                        await imposter.blackListProxy(proxy, store.name);
+                        return await browser.close();
+                    } else {
+                        await page.waitForSelector('#cf-hcaptcha-container');
+                        const captchaSolution = await page.solveRecaptchas();
+                        console.log("Captcha Solution: ");
+                        console.log(captchaSolution);
+                        await page.waitForNavigation({ timeout: 5000 });
+                        console.log("Navigated!");
+                        bot.sendMessage(chat_id, "Solved captcha on " + store.name + " Webshop Page for IP: " + proxy);
+                    }
                 }
                 await page.screenshot({ path: 'debug_' + store.name + '_chunk.png' });
             }
