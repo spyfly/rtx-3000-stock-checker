@@ -143,13 +143,8 @@ async function checkCeconomy(storeId) {
                         await imposter.blackListProxy(proxy, store.name);
                         return await browser.close();
                     } else {
-                        await page.waitForSelector('#cf-hcaptcha-container');
-                        const captchaSolution = await page.solveRecaptchas();
-                        console.log("Captcha Solution: ");
-                        console.log(captchaSolution);
-                        await page.waitForNavigation({ timeout: 5000 });
-                        console.log("Navigated!");
-                        bot.sendMessage(chat_id, "Solved captcha on " + store.name + " Webshop Page for IP: " + proxy);
+                        //Load overview page for captcha solving
+                        await getProductIds(page, store, proxy, true);
                     }
                 }
                 await page.screenshot({ path: 'debug_' + store.name + '_chunk.png' });
@@ -206,7 +201,7 @@ async function checkCeconomy(storeId) {
     await browser.close();
 }
 
-async function getProductIds(page, store, proxy) {
+async function getProductIds(page, store, proxy, override = false) {
     const key = store.name + '_webshop_productids';
     var productIdsLastUpdate = 0
     try {
@@ -217,7 +212,7 @@ async function getProductIds(page, store, proxy) {
 
     const now = Math.floor(Date.now() / 1000);
     //Update CardUrls every hour
-    if (productIdsLastUpdate + 60 * 60 > now) {
+    if (productIdsLastUpdate + 60 * 60 > now || override) {
         try {
             productIds = JSON.parse(await db.get(key));
             return productIds;
