@@ -249,7 +249,7 @@ async function getProductIds(page, store, proxy, override = false) {
             const captchaSolution = await page.solveRecaptchas();
             console.log("Captcha Solution: ");
             console.log(captchaSolution);
-            await page.waitForNavigation({ timeout: 5000 });
+            await page.waitForNavigation({ timeout: 10000 });
             console.log("Navigated!");
             bot.sendMessage(chat_id, "Solved captcha on " + store.name + " Webshop Page for IP: " + proxy);
         }
