@@ -249,7 +249,10 @@ async function getProductIds(page, store, proxy, override = false) {
         } else {
             try {
                 await page.waitForSelector('#cf-hcaptcha-container', { timeout: 5000 });
-            } catch { }
+            } catch {
+                await page.screenshot({ path: 'debug_' + store.name + '_timeout.png' });
+                bot.sendPhoto(debug_chat_id, 'debug_' + store.name + '_timeout.png', { caption: "Waiting for captcha selector timed out " + store.name + " on Webshop Page for IP: " + proxy })
+            }
             const captchaSolution = await page.solveRecaptchas();
             console.log("Captcha Solution: ");
             console.log(captchaSolution);
@@ -260,6 +263,7 @@ async function getProductIds(page, store, proxy, override = false) {
             } catch {
                 await page.screenshot({ path: 'debug_' + store.name + '_timeout.png' });
                 bot.sendPhoto(debug_chat_id, 'debug_' + store.name + '_timeout.png', { caption: "Captcha timed out " + store.name + " on Webshop Page for IP: " + proxy })
+                return [];
             }
         }
     }
