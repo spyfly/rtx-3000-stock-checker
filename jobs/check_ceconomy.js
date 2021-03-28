@@ -280,6 +280,10 @@ async function getProductIds(page, store, proxy, override = false) {
                     //return [];
                 }
             }
+            if (!captchaSolved) {
+                await page.screenshot({ path: 'debug_' + store.name + '_captcha_failed.png' });
+                bot.sendPhoto(debug_chat_id, 'debug_' + store.name + '_captcha_failed.png', { caption: "Captcha solving failed at " + store.name + " on Webshop Page for IP: " + proxy + " | Attempt: " + i })
+            }
         }
     }
 
