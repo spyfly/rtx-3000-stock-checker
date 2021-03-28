@@ -248,6 +248,7 @@ async function getProductIds(page, store, proxy, override = false) {
             return [];
         } else {
             var i = 0;
+            //Captcha solving loop
             while (i < 5) {
                 console.log("Captcha solving attempt: " + ++i)
                 try {
@@ -279,26 +280,25 @@ async function getProductIds(page, store, proxy, override = false) {
             }
         }
     }
-}
 
-await page.screenshot({ path: 'debug_' + store.name + '.png' });
-console.log(store.name + ` Store Page loaded in ${((performance.now() - time) / 1000).toFixed(2)} s`)
-const graphQlData = await page.evaluate(() => window.__PRELOADED_STATE__.apolloState);
-var productIds = [];
-for (const graphQl of Object.values(graphQlData)) {
-    if (graphQl.__typename == "GraphqlProductCollection") {
-        for (const item of Object.values(graphQl.items.visible)) {
-            productIds.push(item.productId)
-        }
+    await page.screenshot({ path: 'debug_' + store.name + '.png' });
+    console.log(store.name + ` Store Page loaded in ${((performance.now() - time) / 1000).toFixed(2)} s`)
+    const graphQlData = await page.evaluate(() => window.__PRELOADED_STATE__.apolloState);
+    var productIds = [];
+    for (const graphQl of Object.values(graphQlData)) {
+        if (graphQl.__typename == "GraphqlProductCollection") {
+            for (const item of Object.values(graphQl.items.visible)) {
+                productIds.push(item.productId)
+            }
 
-        for (const item of Object.values(graphQl.items.hidden)) {
-            productIds.push(item.productId)
+            for (const item of Object.values(graphQl.items.hidden)) {
+                productIds.push(item.productId)
+            }
         }
     }
-}
 
-console.log(productIds)
-await db.put(key + '_last_update', now);
-await db.put(key, JSON.stringify(productIds));
-return productIds;
+    console.log(productIds)
+    await db.put(key + '_last_update', now);
+    await db.put(key, JSON.stringify(productIds));
+    return productIds;
 }
