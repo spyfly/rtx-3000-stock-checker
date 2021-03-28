@@ -248,8 +248,9 @@ async function getProductIds(page, store, proxy, override = false) {
             return [];
         } else {
             var i = 0;
+            var captchaSolved = false;
             //Captcha solving loop
-            while (i < 5) {
+            while (i < 5 && !captchaSolved) {
                 console.log("Captcha solving attempt: " + ++i)
                 try {
                     await page.waitForSelector('#cf-hcaptcha-container', { timeout: 5000 });
@@ -272,6 +273,7 @@ async function getProductIds(page, store, proxy, override = false) {
                     await page.waitForNavigation({ timeout: 5000 });
                     console.log("Navigated!");
                     bot.sendMessage(debug_chat_id, "Solved captcha on " + store.name + " Webshop Page for IP: " + proxy + " | Attempt: " + i);
+                    captchaSolved = true;
                 } catch {
                     await page.screenshot({ path: 'debug_' + store.name + '_timeout.png' });
                     bot.sendPhoto(debug_chat_id, 'debug_' + store.name + '_timeout.png', { caption: "Captcha timed out " + store.name + " on Webshop Page for IP: " + proxy + " | Attempt: " + i })
