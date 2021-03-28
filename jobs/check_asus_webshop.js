@@ -4,6 +4,8 @@ const { SocksProxyAgent } = require('socks-proxy-agent');
 
 const TelegramBot = require('node-telegram-bot-api');
 
+const { performance } = require('perf_hooks');
+
 const config = require('../config.json');
 const bot = new TelegramBot(config.services.telegram.token);
 const chat_id = config.services.telegram.chat_id;
@@ -16,7 +18,8 @@ const deal_notify = require('../libs/deal_notify.js');
 const { parse } = require('node-html-parser');
 
 async function main() {
-    const cardUrls = await getCardUrls();
+    var cardUrls = await getCardUrls();
+    const asusWebShopUrl = 'https://webshop.asus.com/de/komponenten/grafikkarten/rtx-30-serie/?p=1&n=48';
 
     var axios_config = {
         headers: { 'User-Agent': config.browser.user_agent }
@@ -35,10 +38,39 @@ async function main() {
     try {
         var deals = {};
 
+        const response = await axios.get(asusWebShopUrl, axios_config);
+
+        const root = parse(response.data);
+        const productsBox = root.querySelector('.listing');
+        const products = productsBox.querySelectorAll('.product--info');
+        console.log(products.length + " Products found.")
+
+        products.forEach(async product => {
+            const card = {}
+            card.title = product.querySelector('.product--title').getAttribute("title");
+            card.href = product.querySelector('.product--title').getAttribute("href");
+            card.price = parseFloat(product.querySelector('.price--default').textContent.replace(".", "").replace(",", "."));
+            const id = card.href;
+
+            const out_of_stock = product.querySelector('.product--delivery').text.includes('Aktuell nicht verfügbar');
+            //Card is a 3000 Series
+            if (!out_of_stock) {
+                console.log(card.title);
+                deals[id] = card;
+            }
+
+            if (!cardUrls.includes(card.href)) {
+                cardUrls.push(card.href);
+            }
+        });
+
         axios_config.validateStatus = function (status) {
             return (status >= 200 && status < 300) || status == 404;
         };
 
+        const time = performance.now();
+
+        var requests = [];
         for (const cardUrl of cardUrls) {
             //Using a proxy
             if (config.asus_webshop.proxies) {
@@ -49,25 +81,29 @@ async function main() {
                 axios_config.httpsAgent = new SocksProxyAgent(proxy);
                 axios_config.headers = { 'User-Agent': browserDetails.userAgent }
             }
-            const res = await axios.get(cardUrl, axios_config);
-            const out_of_stock = res.data.includes("Dieser Artikel ist leider nicht mehr verfügbar!") || res.data.includes("Nicht verfügbar");
-            if (!out_of_stock) {
-                const html = parse(res.data);
-                const card = {}
-                card.title = html.querySelector(".product--article-name").text
-                card.href = cardUrl;
-                card.price = parseFloat(html.querySelector('[itemprop="price"]').getAttribute("content"));
-                const id = card.href;
+            const req = axios.get(cardUrl, axios_config).then((res) => {
+                const out_of_stock = res.data.includes("Dieser Artikel ist leider nicht mehr verfügbar!") || res.data.includes("Nicht verfügbar");
+                if (!out_of_stock) {
+                    const html = parse(res.data);
+                    const card = {}
+                    card.title = html.querySelector(".product--article-name").text
+                    card.href = cardUrl;
+                    card.price = parseFloat(html.querySelector('[itemprop="price"]').getAttribute("content"));
+                    const id = card.href;
 
-                console.log(card.title);
-                deals[id] = card;
-            }
+                    console.log(card.title);
+                    deals[id] = card;
+                }
+            });
+            requests.push(req);
         }
+
+        await Promise.all(requests);
 
         //Processing Notifications
         await deal_notify(deals, 'asus_webshop_deals', 'asus');
 
-        console.log("Checked " + cardUrls.length + " Asus Product Pages")
+        console.log("Checked " + cardUrls.length + ` Asus Product Pages directly in ${((performance.now() - time) / 1000).toFixed(2)} s`)
         db.close();
     } catch (error) {
         console.log(error);
