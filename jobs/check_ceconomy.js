@@ -52,53 +52,6 @@ async function checkCeconomy(storeId) {
     ]
     const store = stores[storeId];
 
-    var browser_context = {
-        userAgent: config.browser.user_agent,
-        viewport: {
-            width: 1280,
-            height: 720
-        }
-    };
-    var cookies = [];
-    var puppeteer_args = ['--no-sandbox'];
-    var proxy = "default";
-
-    //Using a proxy
-    if (config.ceconomy.proxies) {
-        proxy = await imposter.getRandomProxy(store.name);
-        if (proxy != undefined) {
-            const browserDetails = await imposter.getBrowserDetails(proxy);
-            cookies = browserDetails.cookies;
-            browser_context.proxy = {
-                server: proxy
-            };
-            browser_context.userAgent = browserDetails.userAgent;
-            browser_context.viewport = browserDetails.viewport;
-            //browser_context.viewport.height = 10000;
-
-            puppeteer_args.push('--proxy-server=' + proxy);
-        } else {
-            proxy = "default"
-            console.log("All proxies blacklisted, using no proxy!")
-        }
-    }
-
-    //const browser = await chromium.launchPersistentContext('/tmp/rtx-3000-stock-checker/' + proxy.replace(/\./g, "-").replace(/\:/g, "_"), browser_context);
-    const browser = await puppeteer.launch({
-        userDataDir: '/tmp/rtx-3000-stock-checker/' + proxy.replace(/\./g, "-").replace(/\:/g, "_"),
-        args: puppeteer_args
-    });
-
-    const page = await browser.newPage();
-    page.setUserAgent(browser_context.userAgent);
-    page.setViewport(browser_context.viewport)
-    page.setExtraHTTPHeaders({ DNT: "1" });
-
-    const apiPage = await browser.newPage();
-    apiPage.setUserAgent(browser_context.userAgent);
-    apiPage.setViewport(browser_context.viewport)
-    apiPage.setExtraHTTPHeaders({ DNT: "1" });
-
     if (config.ceconomy.proxies) {
         //await browser.addCookies(cookies);
         //console.log("Set cookies");
@@ -110,7 +63,7 @@ async function checkCeconomy(storeId) {
 
         let time = performance.now();
 
-        const productIds = await getProductIds(page, store, proxy);
+        var [browser, apiPage, proxy, productIds] = await getProductIds(store);
 
         var i, j, productsChunk, chunk = 30;
 
@@ -144,16 +97,17 @@ async function checkCeconomy(storeId) {
                         throw "Navigation_failed";
                     }
                 } catch (error) {
-                    if (proxy !== "default") {
+                    /*if (proxy !== "default") {
                         console.log("Blacklisting IP: " + proxy);
                         await imposter.blackListProxy(proxy, store.name);
                         return await browser.close();
-                    } else {
-                        //Load overview page for captcha solving
-                        await getProductIds(page, store, proxy, true);
-                        //Reload page
-                        await apiPage.goto(url);
-                    }
+                    } else {*/
+                    //Load overview page for captcha solving
+                    await browser.close();
+                    var [browser, apiPage, proxy, productIds] = await getProductIds(store, true);
+                    //Reload page
+                    await apiPage.goto(url);
+                    //}
                 }
                 await apiPage.screenshot({ path: 'debug_' + store.name + '_chunk.png' });
             } else if (response.status() == 429) {
@@ -212,7 +166,56 @@ async function checkCeconomy(storeId) {
     await browser.close();
 }
 
-async function getProductIds(page, store, proxy, override = false) {
+async function getProductIds(store, override = false) {
+    var browser_context = {
+        userAgent: config.browser.user_agent,
+        viewport: {
+            width: 1280,
+            height: 720
+        }
+    };
+    var cookies = [];
+    var puppeteer_args = ['--no-sandbox'];
+    var proxy = "default";
+
+    //Using a proxy
+    if (config.ceconomy.proxies) {
+        proxy = await imposter.getProxySelection(store.name);
+
+        //Select new proxy
+        if (proxy == null || override) {
+            proxy = await imposter.getRandomProxy();
+            await imposter.storeProxySelection(proxy, store.name)
+        }
+
+        if (proxy != undefined) {
+            const browserDetails = await imposter.getBrowserDetails(proxy);
+            cookies = browserDetails.cookies;
+            browser_context.proxy = {
+                server: proxy
+            };
+            browser_context.userAgent = browserDetails.userAgent;
+            browser_context.viewport = browserDetails.viewport;
+            //browser_context.viewport.height = 10000;
+
+            puppeteer_args.push('--proxy-server=' + proxy);
+        } else {
+            proxy = "default"
+            console.log("All proxies blacklisted, using no proxy!")
+        }
+    }
+
+    //const browser = await chromium.launchPersistentContext('/tmp/rtx-3000-stock-checker/' + proxy.replace(/\./g, "-").replace(/\:/g, "_"), browser_context);
+    const browser = await puppeteer.launch({
+        userDataDir: '/tmp/rtx-3000-stock-checker/' + proxy.replace(/\./g, "-").replace(/\:/g, "_"),
+        args: puppeteer_args
+    });
+
+    const page = await browser.newPage();
+    page.setUserAgent(browser_context.userAgent);
+    page.setViewport(browser_context.viewport)
+    page.setExtraHTTPHeaders({ DNT: "1" });
+
     const key = store.name + '_webshop_productids';
     var productIdsLastUpdate = 0
     try {
@@ -226,7 +229,7 @@ async function getProductIds(page, store, proxy, override = false) {
     if (productIdsLastUpdate + 60 * 60 > now && !override) {
         try {
             productIds = JSON.parse(await db.get(key));
-            return productIds;
+            return [browser, page, proxy, productIds];
         } catch {
             console.log("Failed fetching " + key + " (Key Value Store not initialized yet propably)");
         }
@@ -242,49 +245,49 @@ async function getProductIds(page, store, proxy, override = false) {
     captcha = content.includes("Das ging uns leider zu schnell.");
     if (captcha) {
         console.log("Captcha detected on " + store.name + " page!");
-        if (proxy !== "default") {
+        /*if (proxy !== "default") {
             console.log("Blacklisting IP: " + proxy);
             await imposter.blackListProxy(proxy, store.name);
             return [];
-        } else {
-            var i = 0;
-            var captchaSolved = false;
-            //Captcha solving loop
-            while (i < 5 && !captchaSolved) {
-                console.log("Captcha solving attempt: " + ++i)
-                try {
-                    await page.waitForSelector('#cf-hcaptcha-container', { timeout: 5000 });
-                } catch {
-                    //await page.screenshot({ path: 'debug_' + store.name + '_timeout.png' });
-                    //bot.sendPhoto(debug_chat_id, 'debug_' + store.name + '_timeout.png', { caption: "Waiting for captcha selector timed out " + store.name + " on Webshop Page for IP: " + proxy })
-                    console.log("Captcha selector timed out!");
-                }
-                const captchaSolution = await page.solveRecaptchas();
-                //Reload page if no captcha was found
-                if (captchaSolution.captchas.length == 0) {
-                    console.log("No captcha found, retrying!");
-                    await page.goto(storeUrl, { waitUntil: 'load', timeout: 30000 });
-                    continue;
-                }
-
-                console.log("Captcha Solution: ");
-                console.log(captchaSolution);
-                try {
-                    await page.waitForNavigation({ timeout: 5000 });
-                    console.log("Navigated!");
-                    bot.sendMessage(debug_chat_id, "Solved captcha on " + store.name + " Webshop Page for IP: " + proxy + " | Attempt: " + i);
-                    captchaSolved = true;
-                } catch {
-                    await page.screenshot({ path: 'debug_' + store.name + '_timeout.png' });
-                    bot.sendPhoto(debug_chat_id, 'debug_' + store.name + '_timeout.png', { caption: "Captcha timed out " + store.name + " on Webshop Page for IP: " + proxy + " | Attempt: " + i })
-                    //return [];
-                }
+        } else {*/
+        var i = 0;
+        var captchaSolved = false;
+        //Captcha solving loop
+        while (i < 5 && !captchaSolved) {
+            console.log("Captcha solving attempt: " + ++i)
+            try {
+                await page.waitForSelector('#cf-hcaptcha-container', { timeout: 5000 });
+            } catch {
+                //await page.screenshot({ path: 'debug_' + store.name + '_timeout.png' });
+                //bot.sendPhoto(debug_chat_id, 'debug_' + store.name + '_timeout.png', { caption: "Waiting for captcha selector timed out " + store.name + " on Webshop Page for IP: " + proxy })
+                console.log("Captcha selector timed out!");
             }
-            if (!captchaSolved) {
-                await page.screenshot({ path: 'debug_' + store.name + '_captcha_failed.png' });
-                bot.sendPhoto(debug_chat_id, 'debug_' + store.name + '_captcha_failed.png', { caption: "Captcha solving failed at " + store.name + " on Webshop Page for IP: " + proxy + " | Attempt: " + i })
+            const captchaSolution = await page.solveRecaptchas();
+            //Reload page if no captcha was found
+            if (captchaSolution.captchas.length == 0) {
+                console.log("No captcha found, retrying!");
+                await page.goto(storeUrl, { waitUntil: 'load', timeout: 30000 });
+                continue;
+            }
+
+            console.log("Captcha Solution: ");
+            console.log(captchaSolution);
+            try {
+                await page.waitForNavigation({ timeout: 5000 });
+                console.log("Navigated!");
+                bot.sendMessage(debug_chat_id, "Solved captcha on " + store.name + " Webshop Page for IP: " + proxy + " | Attempt: " + i);
+                captchaSolved = true;
+            } catch {
+                await page.screenshot({ path: 'debug_' + store.name + '_timeout.png' });
+                bot.sendPhoto(debug_chat_id, 'debug_' + store.name + '_timeout.png', { caption: "Captcha timed out " + store.name + " on Webshop Page for IP: " + proxy + " | Attempt: " + i })
+                //return [];
             }
         }
+        if (!captchaSolved) {
+            await page.screenshot({ path: 'debug_' + store.name + '_captcha_failed.png' });
+            bot.sendPhoto(debug_chat_id, 'debug_' + store.name + '_captcha_failed.png', { caption: "Captcha solving failed at " + store.name + " on Webshop Page for IP: " + proxy + " | Attempt: " + i })
+        }
+        //}
     }
 
     await page.screenshot({ path: 'debug_' + store.name + '.png' });
@@ -306,5 +309,6 @@ async function getProductIds(page, store, proxy, override = false) {
     console.log(productIds)
     await db.put(key + '_last_update', now);
     await db.put(key, JSON.stringify(productIds));
-    return productIds;
+
+    return [browser, page, proxy, productIds];
 }

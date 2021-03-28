@@ -65,6 +65,7 @@ module.exports = {
         const proxy = proxies[proxyId];
         return proxy;
     },
+
     blackListProxy: async function (proxy, blacklist) {
         var rawDetails;
         const key = "proxy_blacklist_" + blacklist;
@@ -77,6 +78,26 @@ module.exports = {
         } catch {
             await db.put(key, "[]");
             //console.log("Failed storing cookies");
+        }
+    },
+
+    getProxySelection: async function (app) {
+        const key = "proxy_selection_" + app;
+        try {
+            return await db.get(key);
+        } catch {
+            console.log("Failed getting proxy selection for " + app);
+            return null;
+        }
+    },
+
+    storeProxySelection: async function (proxy, app) {
+        const key = "proxy_selection_" + app;
+        try {
+            await db.put(key, proxy);
+            console.log("Updated proxy selection for " + app);
+        } catch {
+            console.log("Failed storing proxy for " + app);
         }
     }
 };
