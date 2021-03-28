@@ -248,7 +248,7 @@ async function getProductIds(page, store, proxy, override = false) {
             return [];
         } else {
             try {
-                await page.waitForSelector('#cf-hcaptcha-container', { timeout: 5000 });
+                await page.waitForSelector('#cf-hcaptcha-container', { timeout: 10000 });
             } catch {
                 await page.screenshot({ path: 'debug_' + store.name + '_timeout.png' });
                 bot.sendPhoto(debug_chat_id, 'debug_' + store.name + '_timeout.png', { caption: "Waiting for captcha selector timed out " + store.name + " on Webshop Page for IP: " + proxy })
