@@ -247,45 +247,58 @@ async function getProductIds(page, store, proxy, override = false) {
             await imposter.blackListProxy(proxy, store.name);
             return [];
         } else {
-            try {
-                await page.waitForSelector('#cf-hcaptcha-container', { timeout: 15000 });
-            } catch {
-                await page.screenshot({ path: 'debug_' + store.name + '_timeout.png' });
-                bot.sendPhoto(debug_chat_id, 'debug_' + store.name + '_timeout.png', { caption: "Waiting for captcha selector timed out " + store.name + " on Webshop Page for IP: " + proxy })
-            }
-            const captchaSolution = await page.solveRecaptchas();
-            console.log("Captcha Solution: ");
-            console.log(captchaSolution);
-            try {
-                await page.waitForNavigation({ timeout: 15000 });
-                console.log("Navigated!");
-                bot.sendMessage(debug_chat_id, "Solved captcha on " + store.name + " Webshop Page for IP: " + proxy);
-            } catch {
-                await page.screenshot({ path: 'debug_' + store.name + '_timeout.png' });
-                bot.sendPhoto(debug_chat_id, 'debug_' + store.name + '_timeout.png', { caption: "Captcha timed out " + store.name + " on Webshop Page for IP: " + proxy })
-                return [];
+            var i = 0;
+            while (i < 5) {
+                console.log("Captcha solving attempt: " + ++i)
+                try {
+                    await page.waitForSelector('#cf-hcaptcha-container', { timeout: 5000 });
+                } catch {
+                    //await page.screenshot({ path: 'debug_' + store.name + '_timeout.png' });
+                    //bot.sendPhoto(debug_chat_id, 'debug_' + store.name + '_timeout.png', { caption: "Waiting for captcha selector timed out " + store.name + " on Webshop Page for IP: " + proxy })
+                    console.log("Captcha selector timed out!");
+                }
+                const captchaSolution = await page.solveRecaptchas();
+                //Reload page if no captcha was found
+                if (captchaSolution.captchas.length == 0) {
+                    console.log("No captcha found, retrying!");
+                    await page.goto(storeUrl, { waitUntil: 'load', timeout: 30000 });
+                    continue;
+                }
+
+                console.log("Captcha Solution: ");
+                console.log(captchaSolution);
+                try {
+                    await page.waitForNavigation({ timeout: 5000 });
+                    console.log("Navigated!");
+                    bot.sendMessage(debug_chat_id, "Solved captcha on " + store.name + " Webshop Page for IP: " + proxy + " | Attempt: " + i);
+                } catch {
+                    await page.screenshot({ path: 'debug_' + store.name + '_timeout.png' });
+                    bot.sendPhoto(debug_chat_id, 'debug_' + store.name + '_timeout.png', { caption: "Captcha timed out " + store.name + " on Webshop Page for IP: " + proxy + " | Attempt: " + i })
+                    return [];
+                }
             }
         }
     }
+}
 
-    await page.screenshot({ path: 'debug_' + store.name + '.png' });
-    console.log(store.name + ` Store Page loaded in ${((performance.now() - time) / 1000).toFixed(2)} s`)
-    const graphQlData = await page.evaluate(() => window.__PRELOADED_STATE__.apolloState);
-    var productIds = [];
-    for (const graphQl of Object.values(graphQlData)) {
-        if (graphQl.__typename == "GraphqlProductCollection") {
-            for (const item of Object.values(graphQl.items.visible)) {
-                productIds.push(item.productId)
-            }
+await page.screenshot({ path: 'debug_' + store.name + '.png' });
+console.log(store.name + ` Store Page loaded in ${((performance.now() - time) / 1000).toFixed(2)} s`)
+const graphQlData = await page.evaluate(() => window.__PRELOADED_STATE__.apolloState);
+var productIds = [];
+for (const graphQl of Object.values(graphQlData)) {
+    if (graphQl.__typename == "GraphqlProductCollection") {
+        for (const item of Object.values(graphQl.items.visible)) {
+            productIds.push(item.productId)
+        }
 
-            for (const item of Object.values(graphQl.items.hidden)) {
-                productIds.push(item.productId)
-            }
+        for (const item of Object.values(graphQl.items.hidden)) {
+            productIds.push(item.productId)
         }
     }
+}
 
-    console.log(productIds)
-    await db.put(key + '_last_update', now);
-    await db.put(key, JSON.stringify(productIds));
-    return productIds;
+console.log(productIds)
+await db.put(key + '_last_update', now);
+await db.put(key, JSON.stringify(productIds));
+return productIds;
 }
