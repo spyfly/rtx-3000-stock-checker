@@ -105,7 +105,11 @@ async function checkCeconomy(storeId) {
                     //Load overview page for captcha solving
                     await browser.close();
                     var [browser, apiPage, proxy, productIds] = await getProductIds(store, true);
-                    //Reload page
+
+                    //Set proper headers
+                    await apiPage.setExtraHTTPHeaders({ 'Content-Type': 'application/json', 'apollographql-client-name': 'pwa-client', 'apollographql-client-version': '7.1.2' })
+
+                    // and now Reload page
                     await apiPage.goto(url);
                     //}
                 }
