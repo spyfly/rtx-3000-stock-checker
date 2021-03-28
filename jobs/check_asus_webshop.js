@@ -50,7 +50,7 @@ async function main() {
                 axios_config.headers = { 'User-Agent': browserDetails.userAgent }
             }
             const res = await axios.get(cardUrl, axios_config);
-            const out_of_stock = res.data.includes("Dieser Artikel ist leider nicht mehr verfügbar!");
+            const out_of_stock = res.data.includes("Dieser Artikel ist leider nicht mehr verfügbar!") || res.data.includes("Nicht verfügbar");
             if (!out_of_stock) {
                 const html = parse(res.data);
                 const card = {}
