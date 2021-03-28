@@ -161,7 +161,7 @@ async function checkCeconomy(storeId) {
                 bot.sendMessage(debug_chat_id, "Rate limited on " + store.name + " Webshop Page for IP: " + proxy);
             }
 
-            const jsonEl = await apiPage.waitForSelector('pre');
+            const jsonEl = await apiPage.waitForSelector('pre', { timeout: 5000 });
             const htmlJSON = await apiPage.evaluate(el => el.textContent, jsonEl)
             const json = JSON.parse(htmlJSON);
             const stockDetails = json.data.getProductCollectionItems.visible;
