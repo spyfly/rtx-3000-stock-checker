@@ -253,9 +253,14 @@ async function getProductIds(page, store, proxy, override = false) {
             const captchaSolution = await page.solveRecaptchas();
             console.log("Captcha Solution: ");
             console.log(captchaSolution);
-            await page.waitForNavigation({ timeout: 5000 });
-            console.log("Navigated!");
-            bot.sendMessage(debug_chat_id, "Solved captcha on " + store.name + " Webshop Page for IP: " + proxy);
+            try {
+                await page.waitForNavigation({ timeout: 5000 });
+                console.log("Navigated!");
+                bot.sendMessage(debug_chat_id, "Solved captcha on " + store.name + " Webshop Page for IP: " + proxy);
+            } catch {
+                await page.screenshot({ path: 'debug_' + store.name + '_timeout.png' });
+                bot.sendPhoto(debug_chat_id, 'debug_' + store.name + '_timeout.png', { caption: "Captcha timed out " + store.name + " on Webshop Page for IP: " + proxy })
+            }
         }
     }
 
