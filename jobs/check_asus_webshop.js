@@ -65,7 +65,7 @@ async function main() {
         });
 
         axios_config.validateStatus = function (status) {
-            return (status >= 200 && status < 300) || status == 404;
+            return (status >= 200 && status < 300) || status == 404 || status == 521;
         };
 
         const time = performance.now();
@@ -82,17 +82,21 @@ async function main() {
                 axios_config.headers = { 'User-Agent': browserDetails.userAgent }
             }
             const req = axios.get(cardUrl, axios_config).then((res) => {
-                const out_of_stock = res.data.includes("Dieser Artikel ist leider nicht mehr verfügbar!") || res.data.includes("Nicht verfügbar");
-                if (!out_of_stock) {
-                    const html = parse(res.data);
-                    const card = {}
-                    card.title = html.querySelector(".product--article-name").text
-                    card.href = cardUrl;
-                    card.price = parseFloat(html.querySelector('[itemprop="price"]').getAttribute("content"));
-                    const id = card.href;
+                if (res.status == 521) {
+                    console.log("Failed fetching Asus Product Page for " + cardUrl);
+                } else {
+                    const out_of_stock = res.data.includes("Dieser Artikel ist leider nicht mehr verfügbar!") || res.data.includes("Nicht verfügbar");
+                    if (!out_of_stock) {
+                        const html = parse(res.data);
+                        const card = {}
+                        card.title = html.querySelector(".product--article-name").text
+                        card.href = cardUrl;
+                        card.price = parseFloat(html.querySelector('[itemprop="price"]').getAttribute("content"));
+                        const id = card.href;
 
-                    console.log(card.title);
-                    deals[id] = card;
+                        console.log(card.title);
+                        deals[id] = card;
+                    }
                 }
             });
             requests.push(req);
