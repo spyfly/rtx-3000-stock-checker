@@ -37,8 +37,16 @@ async function main() {
 
     try {
         var deals = {};
-
-        const response = await axios.get(asusWebShopUrl, axios_config);
+        var i = 0;
+        var response;
+        while (i < 5)
+            try {
+                i++;
+                response = await axios.get(asusWebShopUrl, axios_config);
+                i = 10;
+            } catch (err) {
+                console.log("Failed fetching Asus Product Overview: " + err.message)
+            }
 
         const root = parse(response.data);
         const productsBox = root.querySelector('.listing');
