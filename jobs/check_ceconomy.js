@@ -67,6 +67,8 @@ async function checkCeconomy(storeId) {
 
         var i, j, productsChunk, chunk = 30;
 
+        var productsChecked = 0;
+
         for (i = 0, j = productIds.length; i < j; i += chunk) {
             productsChunk = productIds.slice(i, i + chunk);
 
@@ -124,6 +126,8 @@ async function checkCeconomy(storeId) {
             const json = JSON.parse(htmlJSON);
             const stockDetails = json.data.getProductCollectionItems.visible;
             for (const stockDetail of stockDetails) {
+                productsChecked++;
+
                 //Product exists?
                 if (!stockDetail.product)
                     continue;
@@ -151,7 +155,7 @@ async function checkCeconomy(storeId) {
         //Processing Notifications
         await deal_notify(deals, store.name + '_webshop_deals', 'ceconomy');
 
-        console.log(store.name + ` Deals processed in ${((performance.now() - time) / 1000).toFixed(2)} s`)
+        console.log(productsChecked + " " + store.name + ` Deals processed in ${((performance.now() - time) / 1000).toFixed(2)} s`)
     } catch (error) {
         console.log(error);
         if (error.message.includes("Cannot read property 'apolloState' of undefined") && captcha) {
