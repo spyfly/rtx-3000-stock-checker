@@ -1,15 +1,17 @@
 process.env["NTBA_FIX_319"] = 1;
-const axios = require('axios').default;
-const { SocksProxyAgent } = require('socks-proxy-agent');
-
 const TelegramBot = require('node-telegram-bot-api');
 
 const config = require('../config.json');
 const bot = new TelegramBot(config.services.telegram.token);
 const chat_id = config.services.telegram.chat_id;
+const debug_chat_id = config.services.telegram.debug_chat_id;
+
+const { chromium } = require('playwright')
 
 const nbb_parser = require('../libs/nbb_parser.js');
 const deal_notify = require('../libs/deal_notify.js');
+
+const imposter = require('../libs/imposter.js');
 
 function getRandom(min, max) {
     return Math.floor(Math.random() * (max - min) + min);
@@ -40,32 +42,59 @@ function getRandom(min, max) {
     await deal_notify(nbbDeals, 'nbb_deals', 'nbb');
 })();
 
-async function checkNbbApi(storeUrl, page) {
-    var axios_config = {
-        headers: { 'User-Agent': config.browser.user_agent }
-    }
+async function checkNbbApi(storeUrl, apiPage) {
+    var browser_context = {
+        userAgent: config.browser.user_agent,
+        viewport: {
+            width: 1280,
+            height: 720
+        },
+        extraHTTPHeaders: {
+            DNT: "1"
+        },
+        locale: 'de-DE',
+        timezoneId: 'Europe/Berlin'
+    };
+    var proxy = "default";
 
     //Using a proxy
     if (config.nbb.proxies) {
-        const imposter = require('../libs/imposter.js');
-
         proxy = await imposter.getRandomProxy();
-        browserDetails = await imposter.getBrowserDetails(proxy);
-        axios_config.httpsAgent = new SocksProxyAgent(proxy);
-        axios_config.headers = { 'User-Agent': browserDetails.userAgent }
+        const browserDetails = await imposter.getBrowserDetails(proxy);
+        browser_context.storageState = {
+            cookies: browserDetails.cookies
+        };
+        browser_context.proxy = {
+            server: proxy
+        };
+        browser_context.userAgent = browserDetails.userAgent;
+        browser_context.viewport = browserDetails.viewport;
     }
 
-    const response = await axios.get(storeUrl, axios_config);
+    const browser = await chromium.launch(browser_context);
+    const context = await browser.newContext(browser_context);
+    const page = await context.newPage();
+    await page.goto(storeUrl);
 
-    try {
-        var deals = await nbb_parser(response.data);
-        //await deal_notify(deals, 'nbb_outlet_deals', 'nbb');
-        //await nbb_deals.addUnconfirmedDeals(deals);
-        console.log("Found " + Object.keys(deals).length + " Deals on NBB " + page + " Page")
-        return deals;
-    } catch (error) {
-        console.log(error);
-        bot.sendMessage(chat_id, "An error occurred fetching the NBB " + page + " Page");
-        return {};
+    const response = await page.content();
+    if (response.includes("client has been blocked by bot protection")) {
+        console.log("Blocked by Bot Protection on the NBB " + apiPage + " Page!");
+        bot.sendMessage(debug_chat_id, "Blocked by Bot Protection on the NBB " + apiPage + " Page!");
+    } else {
+        try {
+            var deals = await nbb_parser(response);
+            //await deal_notify(deals, 'nbb_outlet_deals', 'nbb');
+            //await nbb_deals.addUnconfirmedDeals(deals);
+            console.log("Found " + Object.keys(deals).length + " Deals on NBB " + apiPage + " Page")
+
+            await browser.close();
+            return deals;
+        } catch (error) {
+            console.log(error);
+            bot.sendMessage(chat_id, "An error occurred fetching the NBB " + apiPage + " Page");
+
+            await browser.close();
+            return {};
+        }
     }
 }
