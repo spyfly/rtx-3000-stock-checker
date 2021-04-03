@@ -98,4 +98,5 @@ async function checkNbbApi(storeUrl, apiPage) {
             return {};
         }
     }
+    await browser.close();
 }
