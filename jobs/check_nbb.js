@@ -61,14 +61,20 @@ async function checkNbbApi(storeUrl, apiPage) {
     if (config.nbb.proxies) {
         proxy = await imposter.getRandomProxy("nbb");
         const browserDetails = await imposter.getBrowserDetails(proxy);
-        browser_context.storageState = {
-            cookies: browserDetails.cookies
-        };
-        browser_context.proxy = {
-            server: proxy
-        };
-        browser_context.userAgent = browserDetails.userAgent;
-        browser_context.viewport = browserDetails.viewport;
+        if (proxy != undefined) {
+            browser_context.storageState = {
+                cookies: browserDetails.cookies
+            };
+            browser_context.proxy = {
+                server: proxy
+            };
+            browser_context.userAgent = browserDetails.userAgent;
+            browser_context.viewport = browserDetails.viewport;
+        } else {
+            proxy = "default";
+            console.log("All Proxies blacklisted on NBB.com!");
+            bot.sendMessage(debug_chat_id, "All Proxies blacklisted on NBB.com!");
+        }
     }
 
     const browser = await chromium.launch(browser_context);
