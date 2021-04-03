@@ -59,7 +59,7 @@ async function checkNbbApi(storeUrl, apiPage) {
 
     //Using a proxy
     if (config.nbb.proxies) {
-        proxy = await imposter.getRandomProxy();
+        proxy = await imposter.getRandomProxy("nbb");
         const browserDetails = await imposter.getBrowserDetails(proxy);
         browser_context.storageState = {
             cookies: browserDetails.cookies
@@ -79,10 +79,11 @@ async function checkNbbApi(storeUrl, apiPage) {
     const response = await page.content();
     if (response.includes("client has been blocked by bot protection")) {
         console.log("Blocked by Bot Protection on the NBB " + apiPage + " Page | Proxy: " + proxy);
-        await page.screenshot({ path: 'debug_' + apiPage + '_blocked.png' });
-        bot.sendPhoto(debug_chat_id, 'debug_' + apiPage + '_blocked.png', { caption: "Blocked by Bot Protection on the NBB " + apiPage + " Page | Proxy: " + proxy });
-        console.log("Generating new User Agent for Proxy: " + proxy);
-        await imposter.generateNewDetails(proxy);
+        //await page.screenshot({ path: 'debug_' + apiPage + '_blocked.png' });
+        //bot.sendPhoto(debug_chat_id, 'debug_' + apiPage + '_blocked.png', { caption: "Blocked by Bot Protection on the NBB " + apiPage + " Page | Proxy: " + proxy });
+        //console.log("Generating new User Agent for Proxy: " + proxy);
+        //await imposter.generateNewDetails(proxy);
+        imposter.blackListProxy(proxy, "nbb");
     } else {
         try {
             var deals = await nbb_parser(response);
