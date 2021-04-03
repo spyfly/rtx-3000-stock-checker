@@ -173,7 +173,9 @@ async function getProductIds(store, override = false) {
         },
         extraHTTPHeaders: {
             DNT: "1"
-        }
+        },
+        locale: 'de-DE',
+        timezoneId: 'Europe/Berlin'
     };
     var proxy = "default";
 
