@@ -3,8 +3,8 @@ const TelegramBot = require('node-telegram-bot-api');
 const config = require('../config.json');
 const { performance } = require('perf_hooks');
 
-const puppeteer = require('puppeteer-extra')
-const RecaptchaPlugin = require('puppeteer-extra-plugin-recaptcha')
+const { chromium } = require('playwright-extra')
+const RecaptchaPlugin = require('@extra/recaptcha')
 const RecaptchaOptions = {
     visualFeedback: true, // colorize reCAPTCHAs (violet = detected, green = solved)
     provider: {
@@ -12,7 +12,7 @@ const RecaptchaOptions = {
         token: config.services['2captcha'].token, // REPLACE THIS WITH YOUR OWN 2CAPTCHA API KEY ⚡
     },
 }
-puppeteer.use(RecaptchaPlugin(RecaptchaOptions))
+chromium.use(RecaptchaPlugin(RecaptchaOptions))
 
 const deal_notify = require('../libs/deal_notify.js');
 
@@ -52,18 +52,11 @@ async function checkCeconomy(storeId) {
     ]
     const store = stores[storeId];
 
-    if (config.ceconomy.proxies) {
-        //await browser.addCookies(cookies);
-        //console.log("Set cookies");
-    }
-
     var captcha = false;
     try {
         var deals = {};
-
         let time = performance.now();
-
-        var [browser, apiPage, proxy, productIds] = await getProductIds(store);
+        var [browser, context, apiPage, proxy, productIds, apolloGraphVersion] = await getProductIds(store);
 
         var i, j, productsChunk, chunk = 30;
 
@@ -87,29 +80,25 @@ async function checkCeconomy(storeId) {
             const url = "https://" + store.url + "/api/v1/graphql?operationName=GetProductCollectionItems&variables=" + encodeURIComponent(JSON.stringify(itemObj)) + "&extensions=" + encodeURIComponent('{"pwa":{"salesLine":"' + store.graphQlName + '","country":"DE","language":"de"},"persistedQuery":{"version":1,"sha256Hash":"336da976d5643762fdc280b67c0479955c33794fd23e98734c651477dd8a2e4c"}}')
 
             //await page.waitForTimeout(5000);
-            await apiPage.setExtraHTTPHeaders({ 'Content-Type': 'application/json', 'apollographql-client-name': 'pwa-client', 'apollographql-client-version': '7.1.2' })
+            await apiPage.setExtraHTTPHeaders({ 'Content-Type': 'application/json', 'apollographql-client-name': 'pwa-client', 'apollographql-client-version': apolloGraphVersion })
             const response = await apiPage.goto(url);
             console.log(store.name + ": " + response.status() + " | " + proxy);
             if (response.status() == 403) {
                 try {
                     console.log("Waiting for browser to be checked!")
-                    const resp = await apiPage.waitForNavigation({ timeout: 5000 });
+                    const resp = await apiPage.waitForNavigation({ timeout: 10000 });
                     if (resp.status() != 200) {
                         console.log("Navigation failed!");
                         throw "Navigation_failed";
                     }
                 } catch (error) {
-                    /*if (proxy !== "default") {
-                        console.log("Blacklisting IP: " + proxy);
-                        await imposter.blackListProxy(proxy, store.name);
-                        return await browser.close();
-                    } else {*/
                     //Load overview page for captcha solving
+                    await imposter.updateCookies(proxy, await context.cookies());
                     await browser.close();
-                    var [browser, apiPage, proxy, productIds] = await getProductIds(store, true);
+                    var [browser, context, apiPage, proxy, productIds, apolloGraphVersion] = await getProductIds(store, true);
 
                     //Set proper headers
-                    await apiPage.setExtraHTTPHeaders({ 'Content-Type': 'application/json', 'apollographql-client-name': 'pwa-client', 'apollographql-client-version': '7.1.2' })
+                    await apiPage.setExtraHTTPHeaders({ 'Content-Type': 'application/json', 'apollographql-client-name': 'pwa-client', 'apollographql-client-version': apolloGraphVersion })
 
                     // and now Reload page
                     await apiPage.goto(url);
@@ -121,7 +110,7 @@ async function checkCeconomy(storeId) {
                 bot.sendMessage(debug_chat_id, "Rate limited on " + store.name + " Webshop Page for IP: " + proxy);
             }
 
-            const jsonEl = await apiPage.waitForSelector('pre', { timeout: 5000 });
+            const jsonEl = await apiPage.waitForSelector('pre', { timeout: 10000 });
             const htmlJSON = await apiPage.evaluate(el => el.textContent, jsonEl)
             const json = JSON.parse(htmlJSON);
             const stockDetails = json.data.getProductCollectionItems.visible;
@@ -171,6 +160,7 @@ async function checkCeconomy(storeId) {
         }
     }
 
+    await imposter.updateCookies(proxy, await context.cookies());
     await browser.close();
 }
 
@@ -180,10 +170,11 @@ async function getProductIds(store, override = false) {
         viewport: {
             width: 1280,
             height: 720
+        },
+        extraHTTPHeaders: {
+            DNT: "1"
         }
     };
-    var cookies = [];
-    var puppeteer_args = ['--no-sandbox'];
     var proxy = "default";
 
     //Using a proxy
@@ -198,15 +189,14 @@ async function getProductIds(store, override = false) {
 
         if (proxy != undefined) {
             const browserDetails = await imposter.getBrowserDetails(proxy);
-            cookies = browserDetails.cookies;
+            browser_context.storageState = {
+                cookies: browserDetails.cookies
+            };
             browser_context.proxy = {
                 server: proxy
             };
             browser_context.userAgent = browserDetails.userAgent;
             browser_context.viewport = browserDetails.viewport;
-            //browser_context.viewport.height = 10000;
-
-            puppeteer_args.push('--proxy-server=' + proxy);
         } else {
             proxy = "default"
             console.log("All proxies blacklisted, using no proxy!")
@@ -214,15 +204,9 @@ async function getProductIds(store, override = false) {
     }
 
     //const browser = await chromium.launchPersistentContext('/tmp/rtx-3000-stock-checker/' + proxy.replace(/\./g, "-").replace(/\:/g, "_"), browser_context);
-    const browser = await puppeteer.launch({
-        userDataDir: '/tmp/rtx-3000-stock-checker/' + proxy.replace(/\./g, "-").replace(/\:/g, "_"),
-        args: puppeteer_args
-    });
-
-    const page = await browser.newPage();
-    page.setUserAgent(browser_context.userAgent);
-    page.setViewport(browser_context.viewport)
-    page.setExtraHTTPHeaders({ DNT: "1" });
+    const browser = await chromium.launch(browser_context);
+    const context = await browser.newContext(browser_context);
+    const page = await context.newPage();
 
     const key = store.name + '_webshop_productids';
     var productIdsLastUpdate = 0
@@ -233,11 +217,13 @@ async function getProductIds(store, override = false) {
     }
 
     const now = Math.floor(Date.now() / 1000);
+    var apolloGraphVersion;
     //Update CardUrls every hour
     if (productIdsLastUpdate + 60 * 60 > now && !override) {
         try {
             productIds = JSON.parse(await db.get(key));
-            return [browser, page, proxy, productIds];
+            apolloGraphVersion = await db.get(key + '_api_version');
+            return [browser, context, page, proxy, productIds, apolloGraphVersion];
         } catch {
             console.log("Failed fetching " + key + " (Key Value Store not initialized yet propably)");
         }
@@ -314,9 +300,13 @@ async function getProductIds(store, override = false) {
         }
     }
 
+    apolloGraphVersion = await (await page.waitForSelector('[name="version"]', { state: 'attached' })).getAttribute("content");
+
+    console.log("ApolloGraphVersion: " + apolloGraphVersion)
     console.log(productIds)
     await db.put(key + '_last_update', now);
     await db.put(key, JSON.stringify(productIds));
+    await db.put(key + '_api_version', apolloGraphVersion);
 
-    return [browser, page, proxy, productIds];
+    return [browser, context, page, proxy, productIds, apolloGraphVersion];
 }
