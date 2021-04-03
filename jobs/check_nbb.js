@@ -78,8 +78,9 @@ async function checkNbbApi(storeUrl, apiPage) {
 
     const response = await page.content();
     if (response.includes("client has been blocked by bot protection")) {
-        console.log("Blocked by Bot Protection on the NBB " + apiPage + " Page!");
-        bot.sendMessage(debug_chat_id, "Blocked by Bot Protection on the NBB " + apiPage + " Page!");
+        console.log("Blocked by Bot Protection on the NBB " + apiPage + " Page | Proxy: " + proxy);
+        await page.screenshot({ path: 'debug_' + apiPage + '_blocked.png' });
+        bot.sendPhoto(debug_chat_id, 'debug_' + apiPage + '_blocked.png', { caption: "Blocked by Bot Protection on the NBB " + apiPage + " Page | Proxy: " + proxy });
     } else {
         try {
             var deals = await nbb_parser(response);
