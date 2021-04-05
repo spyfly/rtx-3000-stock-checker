@@ -64,7 +64,7 @@ async function main() {
             const out_of_stock = product.querySelector('.product--delivery').text.includes('Aktuell nicht verfügbar');
             //Card is a 3000 Series
             if (!out_of_stock) {
-                console.log(card.title);
+                console.log(card.title + " for " + card.price);
                 deals[id] = card;
             }
 
@@ -107,7 +107,7 @@ async function main() {
                         card.price = parseFloat(html.querySelector('[itemprop="price"]').getAttribute("content"));
                         const id = card.href;
 
-                        console.log(card.title);
+                        console.log(card.title + " for " + card.price);
                         deals[id] = card;
                     } else {
                         const out_of_stock = html.querySelector(".is--error").textContent.includes("Nicht verfügbar");
