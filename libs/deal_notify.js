@@ -35,20 +35,31 @@ module.exports = async function (deals, db_index, shop_name) {
             //Store Message ID
             deals[id].message_id = message_id;
         }
+
+        deals[id].lastSeen = Math.floor(Date.now() / 1000);
     }
 
     // Deal gone Notification
     for (const [id, deal] of Object.entries(oldDeals)) {
         if (!deals[id]) {
-            //Notify about deal being gone
-            try {
-                await bot.editMessageText(createMessage(deal), {
-                    chat_id: chat_id,
-                    message_id: deal.message_id,
-                    parse_mode: 'HTML'
-                })
-            } catch (err) {
-                console.log("Couldn't edit message!");
+            const lastSeenSecondsAgo = Math.floor(Date.now() / 1000) - deal.lastSeen;
+            //console.log("Last seen: " + lastSeenSecondsAgo)
+
+            if (lastSeenSecondsAgo > config.nbb.preserve_deal_duration || shop_name != 'nbb') {
+                //Notify about deal being gone (after 60 seconds for NBB)
+                try {
+                    await bot.editMessageText(createMessage(deal), {
+                        chat_id: chat_id,
+                        message_id: deal.message_id,
+                        parse_mode: 'HTML'
+                    })
+                } catch (err) {
+                    console.log("Couldn't edit message!");
+                }
+            } else {
+                //Preserve Deal
+                console.log("Preserving Deal for NBB")
+                deals[id] = deal;
             }
         } else {
             //Preserve Message ID

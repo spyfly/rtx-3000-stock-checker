@@ -8,6 +8,7 @@
     },
     "nbb": {
         "check_interval": "10s",
+        "preserve_deal_duration": 60,
         "proxies": false
     },
     "asus_webshop": {
