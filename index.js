@@ -22,6 +22,11 @@ const bree = new Bree({
       closeWorkerAfterMs: 9500
     },
     {
+      name: 'check_alternate',
+      interval: config.alternate.check_interval,
+      closeWorkerAfterMs: 9500
+    },
+    {
       name: 'check_ceconomy',
       cron: config.ceconomy.cron,
       hasSeconds: true

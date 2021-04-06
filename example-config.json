@@ -19,6 +19,10 @@
         "check_interval": "60s",
         "proxies": false
     },
+    "alternate": {
+        "check_interval": "30s",
+        "proxies": false
+    },
     "autobuy": {
         "enabled": true,
         "url": "http://localhost:3000"
