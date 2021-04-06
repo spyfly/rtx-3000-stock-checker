@@ -56,28 +56,18 @@ async function checkCeconomy(storeId) {
     try {
         var deals = {};
         let time = performance.now();
-        var [browser, context, apiPage, proxy, productIds, apolloGraphVersion] = await getProductIds(store);
-
-        var i, j, productsChunk, chunk = 30;
-
+        var [browser, context, apiPage, proxy, collectionIds, apolloGraphVersion] = await getCollectionIds(store);
         var productsChecked = 0;
 
-        for (i = 0, j = productIds.length; i < j; i += chunk) {
-            productsChunk = productIds.slice(i, i + chunk);
-
+        for (const collectionId of collectionIds) {
             const itemObj = {
-                items: []
-            };
-
-            for (const productId of productsChunk) {
-                itemObj.items.push({
-                    id: productId,
-                    type: "Product",
-                    priceOverride: null
-                })
+                "id": collectionId,
+                "limit": 30,
+                "startItemIndex": 0,
+                "gridSize": "Small",
+                "storeId": null
             }
-
-            const url = "https://" + store.url + "/api/v1/graphql?operationName=GetProductCollectionItems&variables=" + encodeURIComponent(JSON.stringify(itemObj)) + "&extensions=" + encodeURIComponent('{"pwa":{"salesLine":"' + store.graphQlName + '","country":"DE","language":"de"},"persistedQuery":{"version":1,"sha256Hash":"336da976d5643762fdc280b67c0479955c33794fd23e98734c651477dd8a2e4c"}}')
+            const url = "https://" + store.url + "/api/v1/graphql?operationName=GetProductCollectionContent&variables=" + encodeURIComponent(JSON.stringify(itemObj)) + "&extensions=" + encodeURIComponent('{"pwa":{"salesLine":"' + store.graphQlName + '","country":"DE","language":"de"},"persistedQuery":{"version":1,"sha256Hash":"2ca5f94736d90932c29fcbe78a79af7e316149da5947085416bc26f990a19896"}}')
 
             //await page.waitForTimeout(5000);
             await apiPage.setExtraHTTPHeaders({ 'Content-Type': 'application/json', 'apollographql-client-name': 'pwa-client', 'apollographql-client-version': apolloGraphVersion })
@@ -95,7 +85,7 @@ async function checkCeconomy(storeId) {
                     //Load overview page for captcha solving
                     await imposter.updateCookies(proxy, await context.cookies());
                     await browser.close();
-                    var [browser, context, apiPage, proxy, productIds, apolloGraphVersion] = await getProductIds(store, true);
+                    var [browser, context, apiPage, proxy, collectionIds, apolloGraphVersion] = await getCollectionIds(store, true);
 
                     //Set proper headers
                     await apiPage.setExtraHTTPHeaders({ 'Content-Type': 'application/json', 'apollographql-client-name': 'pwa-client', 'apollographql-client-version': apolloGraphVersion })
@@ -113,7 +103,7 @@ async function checkCeconomy(storeId) {
             const jsonEl = await apiPage.waitForSelector('pre', { timeout: 10000 });
             const htmlJSON = await apiPage.evaluate(el => el.textContent, jsonEl)
             const json = JSON.parse(htmlJSON);
-            const stockDetails = json.data.getProductCollectionItems.visible;
+            const stockDetails = json.data.productCollectionContent.items.visible;
             for (const stockDetail of stockDetails) {
                 productsChecked++;
 
@@ -164,7 +154,7 @@ async function checkCeconomy(storeId) {
     await browser.close();
 }
 
-async function getProductIds(store, override = false) {
+async function getCollectionIds(store, override = false) {
     var browser_context = {
         userAgent: config.browser.user_agent,
         viewport: {
@@ -210,10 +200,10 @@ async function getProductIds(store, override = false) {
     const context = await browser.newContext(browser_context);
     const page = await context.newPage();
 
-    const key = store.name + '_webshop_productids';
-    var productIdsLastUpdate = 0
+    const key = store.name + '_webshop_collectionids';
+    var collectionIdsLastUpdate = 0
     try {
-        productIdsLastUpdate = JSON.parse(await db.get(key + '_last_update'));
+        collectionIdsLastUpdate = JSON.parse(await db.get(key + '_last_update'));
     } catch {
         console.log("Failed fetching " + key + "_last_update (Key Value Store not initialized yet propably)");
     }
@@ -221,17 +211,17 @@ async function getProductIds(store, override = false) {
     const now = Math.floor(Date.now() / 1000);
     var apolloGraphVersion;
     //Update CardUrls every hour
-    if (productIdsLastUpdate + 60 * 60 > now && !override) {
+    if (collectionIdsLastUpdate + 60 * 60 > now && !override) {
         try {
-            productIds = JSON.parse(await db.get(key));
+            collectionIds = JSON.parse(await db.get(key));
             apolloGraphVersion = await db.get(key + '_api_version');
-            return [browser, context, page, proxy, productIds, apolloGraphVersion];
+            return [browser, context, page, proxy, collectionIds, apolloGraphVersion];
         } catch {
             console.log("Failed fetching " + key + " (Key Value Store not initialized yet propably)");
         }
     }
 
-    //Fetching productIds
+    //Fetching collectionIds
     const storeUrl = 'https://' + store.url + '/de/campaign/grafikkarten-nvidia-geforce-rtx-30';
 
     let time = performance.now();
@@ -289,26 +279,22 @@ async function getProductIds(store, override = false) {
     await page.screenshot({ path: 'debug_' + store.name + '.png' });
     console.log(store.name + ` Store Page loaded in ${((performance.now() - time) / 1000).toFixed(2)} s`)
     const graphQlData = await page.evaluate(() => window.__PRELOADED_STATE__.apolloState);
-    var productIds = [];
-    for (const graphQl of Object.values(graphQlData)) {
-        if (graphQl.__typename == "GraphqlProductCollection") {
-            for (const item of Object.values(graphQl.items.visible)) {
-                productIds.push(item.productId)
-            }
-
-            for (const item of Object.values(graphQl.items.hidden)) {
-                productIds.push(item.productId)
-            }
+    var collectionIds = [];
+    for (const [key, value] of Object.entries(graphQlData)) {
+        if (key.includes("GraphqlProductCollection:")) {
+            console.log(value.id + " | Count: " + value.totalProducts);
+            collectionIds.push(value.id);
         }
     }
+
 
     apolloGraphVersion = await (await page.waitForSelector('[name="version"]', { state: 'attached' })).getAttribute("content");
 
     console.log("ApolloGraphVersion: " + apolloGraphVersion)
-    console.log(productIds)
+    console.log(collectionIds)
     await db.put(key + '_last_update', now);
-    await db.put(key, JSON.stringify(productIds));
+    await db.put(key, JSON.stringify(collectionIds));
     await db.put(key + '_api_version', apolloGraphVersion);
 
-    return [browser, context, page, proxy, productIds, apolloGraphVersion];
+    return [browser, context, page, proxy, collectionIds, apolloGraphVersion];
 }
