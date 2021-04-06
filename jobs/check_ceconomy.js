@@ -97,6 +97,7 @@ async function checkCeconomy(storeId) {
                 await apiPage.screenshot({ path: 'debug_' + store.name + '_chunk.png' });
             } else if (response.status() == 429) {
                 console.log("Rate limited!")
+                await apiPage.screenshot({ path: 'debug_' + store.name + '_chunk_rate_limit.png' });
                 bot.sendMessage(debug_chat_id, "Rate limited on " + store.name + " Webshop Page for IP: " + proxy);
             }
 
