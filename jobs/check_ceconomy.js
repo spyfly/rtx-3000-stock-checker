@@ -73,7 +73,7 @@ async function checkCeconomy(storeId) {
             await apiPage.setExtraHTTPHeaders({ 'Content-Type': 'application/json', 'apollographql-client-name': 'pwa-client', 'apollographql-client-version': apolloGraphVersion })
             const response = await apiPage.goto(url);
             console.log(store.name + ": " + response.status() + " | " + proxy);
-            if (response.status() == 403) {
+            if (response.status() == 403 || response.status() == 429) {
                 try {
                     console.log("Waiting for browser to be checked!")
                     const resp = await apiPage.waitForNavigation({ timeout: 10000 });
