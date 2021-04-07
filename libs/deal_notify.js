@@ -24,7 +24,7 @@ module.exports = async function (deals, db_index, shop_name) {
     for (const [id, deal] of Object.entries(deals)) {
         if (!oldDeals[id]) {
             //Notify about new Deal
-            const { message_id } = await bot.sendMessage(chat_id, createMessage(deal), { parse_mode: 'HTML' })
+            const { message_id } = await bot.sendMessage(chat_id, createMessage(deal), { parse_mode: 'HTML', disable_web_page_preview: true })
 
             //Trigger AutoBuy
             if (config.autobuy.enabled)
@@ -56,7 +56,8 @@ module.exports = async function (deals, db_index, shop_name) {
                     await bot.editMessageText(createMessage(deal), {
                         chat_id: chat_id,
                         message_id: deal.message_id,
-                        parse_mode: 'HTML'
+                        parse_mode: 'HTML',
+                        disable_web_page_preview: true
                     })
                 } catch (err) {
                     console.log("Couldn't edit message!");
