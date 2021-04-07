@@ -21,6 +21,7 @@
     },
     "alternate": {
         "check_interval": "30s",
+        "preserve_deal_duration": 60,
         "proxies": false
     },
     "autobuy": {
