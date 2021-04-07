@@ -104,13 +104,15 @@ async function main() {
 
                         console.log(card.title + " for " + card.price);
                         deals[id] = card;
-                    } else {
+                    } else if (html.querySelector("#product-top-right")) {
                         const productBox = html.querySelector("#product-top-right").textContent;
                         const out_of_stock = productBox.includes("Bereits verkauft") || productBox.includes("Artikel kann derzeit nicht gekauft werden") || productBox.includes("derzeit sind alle Artikel reserviert");
                         if (!out_of_stock) {
                             console.log("Could not figure out Stock Status for " + cardUrl);
                             bot.sendMessage(debug_chat_id, "Could not figure out Stock Status for " + cardUrl);
                         }
+                    } else {
+                        console.log("No product information found!");
                     }
                 }
             });
