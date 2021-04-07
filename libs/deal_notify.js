@@ -45,7 +45,12 @@ module.exports = async function (deals, db_index, shop_name) {
             const lastSeenSecondsAgo = Math.floor(Date.now() / 1000) - deal.lastSeen;
             //console.log("Last seen: " + lastSeenSecondsAgo)
 
-            if (lastSeenSecondsAgo > config.nbb.preserve_deal_duration || shop_name != 'nbb') {
+            if ((lastSeenSecondsAgo < config.nbb.preserve_deal_duration && shop_name == 'nbb') ||
+                (lastSeenSecondsAgo < config.alternate.preserve_deal_duration && shop_name == 'alternate')) {
+                //Preserve Deal
+                console.log("Preserving Deal for " + shop_name)
+                deals[id] = deal;
+            } else {
                 //Notify about deal being gone (after 60 seconds for NBB)
                 try {
                     await bot.editMessageText(createMessage(deal), {
@@ -56,10 +61,6 @@ module.exports = async function (deals, db_index, shop_name) {
                 } catch (err) {
                     console.log("Couldn't edit message!");
                 }
-            } else {
-                //Preserve Deal
-                console.log("Preserving Deal for NBB")
-                deals[id] = deal;
             }
         } else {
             //Preserve Message ID
