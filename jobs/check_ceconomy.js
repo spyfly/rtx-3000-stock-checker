@@ -246,8 +246,10 @@ async function getCollectionIds(store, override = false) {
         //Captcha solving loop
         while (i < 5 && !captchaSolved) {
             console.log("Captcha solving attempt: " + ++i)
+            fs.writeFile('debug_' + store.name + '_captcha.html', await page.content());
             try {
                 await page.waitForSelector('#cf-hcaptcha-container', { timeout: 5000 });
+                fs.writeFile('debug_' + store.name + '_captcha_found.html', await page.content());
             } catch {
                 //await page.screenshot({ path: 'debug_' + store.name + '_timeout.png' });
                 //bot.sendPhoto(debug_chat_id, 'debug_' + store.name + '_timeout.png', { caption: "Waiting for captcha selector timed out " + store.name + " on Webshop Page for IP: " + proxy })
