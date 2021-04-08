@@ -249,6 +249,7 @@ async function getCollectionIds(store, override = false) {
             fs.writeFile('debug_' + store.name + '_captcha.html', await page.content());
             try {
                 await page.waitForSelector('#cf-hcaptcha-container', { timeout: 5000 });
+                await page.waitForTimeout(5000);
                 fs.writeFile('debug_' + store.name + '_captcha_found.html', await page.content());
             } catch {
                 //await page.screenshot({ path: 'debug_' + store.name + '_timeout.png' });
@@ -259,8 +260,7 @@ async function getCollectionIds(store, override = false) {
             //Reload page if no captcha was found
             if (captchaSolution.captchas.length == 0) {
                 console.log("No captcha found, retrying!");
-                await page.waitForTimeout(5000);
-                //await page.goto(storeUrl, { waitUntil: 'load', timeout: 30000 });
+                await page.goto(storeUrl, { waitUntil: 'load', timeout: 30000 });
                 continue;
             }
 
