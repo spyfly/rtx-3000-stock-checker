@@ -17,7 +17,8 @@
     },
     "ceconomy": {
         "check_interval": "60s",
-        "proxies": false
+        "proxies": false,
+        "store_proxy": false
     },
     "alternate": {
         "check_interval": "30s",

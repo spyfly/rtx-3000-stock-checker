@@ -168,12 +168,18 @@ async function getCollectionIds(store, override = false) {
 
     //Using a proxy
     if (config.ceconomy.proxies) {
-        proxy = await imposter.getProxySelection(store.name);
+        if (config.ceconomy.store_proxy) {
+            // Use the same proxy every time until we get a new Captcha
+            proxy = await imposter.getProxySelection(store.name);
 
-        //Select new proxy
-        if (proxy == null || override) {
+            //Select new proxy
+            if (proxy == null || override) {
+                proxy = await imposter.getRandomProxy();
+                await imposter.storeProxySelection(proxy, store.name)
+            }
+        } else {
+            // New Proxy every time
             proxy = await imposter.getRandomProxy();
-            await imposter.storeProxySelection(proxy, store.name)
         }
 
         if (proxy != undefined) {
