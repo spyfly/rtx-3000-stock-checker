@@ -259,6 +259,7 @@ async function getCollectionIds(store, override = false) {
             //Reload page if no captcha was found
             if (captchaSolution.captchas.length == 0) {
                 console.log("No captcha found, retrying!");
+                await page.waitForTimeout(1000);
                 //await page.goto(storeUrl, { waitUntil: 'load', timeout: 30000 });
                 continue;
             }
