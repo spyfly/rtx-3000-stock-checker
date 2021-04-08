@@ -3,6 +3,8 @@ const TelegramBot = require('node-telegram-bot-api');
 const config = require('../config.json');
 const { performance } = require('perf_hooks');
 
+const fs = require('fs').promises;
+
 const { chromium } = require('playwright-extra')
 const RecaptchaPlugin = require('@extra/recaptcha')
 const RecaptchaOptions = {
@@ -273,6 +275,7 @@ async function getCollectionIds(store, override = false) {
             }
         }
         if (!captchaSolved) {
+            fs.writeFile('debug_' + store.name + '_captcha_failed.html', await page.content());
             await page.screenshot({ path: 'debug_' + store.name + '_captcha_failed.png' });
             bot.sendPhoto(debug_chat_id, 'debug_' + store.name + '_captcha_failed.png', { caption: "Captcha solving failed at " + store.name + " on Webshop Page for IP: " + proxy + " | Attempt: " + i })
         }
