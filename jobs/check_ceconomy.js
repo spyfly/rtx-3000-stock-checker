@@ -249,7 +249,7 @@ async function getCollectionIds(store, override = false) {
             fs.writeFile('debug_' + store.name + '_captcha.html', await page.content());
             try {
                 await page.waitForSelector('#cf-hcaptcha-container', { timeout: 5000 });
-                await page.waitForTimeout(5000);
+                await page.waitForTimeout(10000);
                 fs.writeFile('debug_' + store.name + '_captcha_found.html', await page.content());
             } catch {
                 //await page.screenshot({ path: 'debug_' + store.name + '_timeout.png' });
