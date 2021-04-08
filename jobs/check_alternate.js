@@ -18,9 +18,13 @@ const deal_notify = require('../libs/deal_notify.js');
 
 const { parse } = require('node-html-parser');
 
+function getRandom(min, max) {
+    return Math.floor(Math.random() * (max - min) + min);
+}
+
 async function main() {
     var cardUrls = [];
-    const alternateWebshopUrl = 'https://www.alternate.de/listing_ajax.xhtml?t=21466&listing=1&filter_-2=true&filter_2203=NVIDIA+GeForce+RTX+3080&filter_2203=NVIDIA+GeForce+RTX+3070&filter_2203=NVIDIA+GeForce+RTX+3060+Ti&filter_2203=NVIDIA+GeForce+RTX+3060&filter_2203=NVIDIA+GeForce+RTX+3090&s=price_asc&page=';
+    const alternateWebshopUrl = 'https://www.alternate.de/listing_ajax.xhtml?t=21466&listing=1&filter_-2=true&filter_2203=NVIDIA+GeForce+RTX+3080&filter_2203=NVIDIA+GeForce+RTX+3070&filter_2203=NVIDIA+GeForce+RTX+3060+Ti&filter_2203=NVIDIA+GeForce+RTX+3060&filter_2203=NVIDIA+GeForce+RTX+3090&s=price_asc&page=1&pr1=' + getRandom(50, 250) + '&pr2=' + getRandom(2000, 2500);
 
     var axios_config = {
         headers: { 'User-Agent': config.browser.user_agent }
