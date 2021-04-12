@@ -82,7 +82,7 @@ async function main() {
         const time = performance.now();
 
         //Only check 3060 Ti/3070 and 3080 directly
-        cardUrls = cardUrls.filter(cardUrl => cardUrl.includes("3060ti") || cardUrl.includes("3070") || cardUrl.includes("3080"))
+        //cardUrls = cardUrls.filter(cardUrl => cardUrl.includes("3060ti") || cardUrl.includes("3070") || cardUrl.includes("3080"))
 
         var requests = [];
         var failedRequests = [];
@@ -90,7 +90,6 @@ async function main() {
         for (const cardUrl of cardUrls) {
             const imposter = require('../libs/imposter.js');
 
-            await sleep(100);
             //Using a proxy
             if (config.asus_webshop.proxies) {
                 foundProxy = false;
