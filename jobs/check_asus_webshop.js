@@ -82,10 +82,9 @@ async function main() {
         var requests = [];
         var failedRequests = [];
         for (const cardUrl of cardUrls) {
+            const imposter = require('../libs/imposter.js');
             //Using a proxy
             if (config.asus_webshop.proxies) {
-                const imposter = require('../libs/imposter.js');
-
                 proxy = await imposter.getRandomProxy();
                 browserDetails = await imposter.getBrowserDetails(proxy);
                 axios_config.httpsAgent = new SocksProxyAgent(proxy);
