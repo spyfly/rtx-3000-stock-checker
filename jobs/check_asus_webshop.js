@@ -19,6 +19,8 @@ const deal_notify = require('../libs/deal_notify.js');
 const { parse } = require('node-html-parser');
 
 async function main() {
+    var usedProxies = [];
+
     var cardUrls = await getCardUrls();
     const asusWebShopUrl = 'https://webshop.asus.com/de/komponenten/grafikkarten/rtx-30-serie/?p=1&n=48';
 
@@ -84,13 +86,20 @@ async function main() {
 
         var requests = [];
         var failedRequests = [];
+
         for (const cardUrl of cardUrls) {
             const imposter = require('../libs/imposter.js');
 
             await sleep(100);
             //Using a proxy
             if (config.asus_webshop.proxies) {
-                proxy = await imposter.getRandomProxy();
+                foundProxy = false;
+                while (foundProxy = false) {
+                    proxy = await imposter.getRandomProxy();
+                    if (!usedProxies.includes(proxy)) {
+                        foundProxy = true;
+                    }
+                }
                 browserDetails = await imposter.getBrowserDetails(proxy);
                 axios_config.httpsAgent = new SocksProxyAgent(proxy);
                 axios_config.headers = { 'User-Agent': browserDetails.userAgent }
