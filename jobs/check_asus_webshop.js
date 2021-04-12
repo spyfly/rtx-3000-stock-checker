@@ -120,6 +120,7 @@ async function main() {
                 }
             }, (err) => {
                 console.log("Failed fetching Asus Product Page for " + cardUrl + " | Err: " + err + " | User-Agent: " + browserDetails.userAgent);
+                imposter.generateNewDetails(proxy);
                 failedRequests.push(cardUrl);
             });
             requests.push(req);
