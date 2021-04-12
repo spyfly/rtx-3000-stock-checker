@@ -118,8 +118,8 @@ async function main() {
                         }
                     }
                 }
-            }, () => {
-                console.log("Failed fetching Asus Product Page for " + cardUrl);
+            }, (err) => {
+                console.log("Failed fetching Asus Product Page for " + cardUrl + " | Err: " + err);
                 failedRequests.push(cardUrl);
             });
             requests.push(req);
