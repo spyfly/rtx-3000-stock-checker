@@ -80,6 +80,7 @@ async function main() {
         const time = performance.now();
 
         var requests = [];
+        var failedRequests = [];
         for (const cardUrl of cardUrls) {
             //Using a proxy
             if (config.asus_webshop.proxies) {
@@ -119,13 +120,16 @@ async function main() {
                 }
             }, () => {
                 console.log("Failed fetching Asus Product Page for " + cardUrl);
-                bot.sendMessage(debug_chat_id, "An error occurred fetching the Asus Product Page for " + cardUrl);
-
+                failedRequests.push(cardUrl);
             });
             requests.push(req);
         }
 
         await Promise.all(requests);
+        if (failedRequests.length > 0) {
+            bot.sendMessage(debug_chat_id, "Failed fetching " + failedRequests.length + "/" + cardUrls.length + " CardUrls: ```\n" + failedRequests.join('\n') + "\n```", { parse_mode: 'MarkdownV2' });
+
+        }
 
         //Processing Notifications
         await deal_notify(deals, 'asus_webshop_deals', 'asus');
