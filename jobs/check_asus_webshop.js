@@ -86,6 +86,8 @@ async function main() {
         var failedRequests = [];
         for (const cardUrl of cardUrls) {
             const imposter = require('../libs/imposter.js');
+
+            await sleep(100);
             //Using a proxy
             if (config.asus_webshop.proxies) {
                 proxy = await imposter.getRandomProxy();
@@ -206,3 +208,7 @@ async function getCardUrls() {
 }
 
 main();
+
+function sleep(time) {
+    return new Promise((resolve) => setTimeout(resolve, time));
+}
