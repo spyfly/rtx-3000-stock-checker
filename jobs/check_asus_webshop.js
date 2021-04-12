@@ -90,35 +90,39 @@ async function main() {
                 axios_config.httpsAgent = new SocksProxyAgent(proxy);
                 axios_config.headers = { 'User-Agent': browserDetails.userAgent }
             }
-            const req = axios.get(cardUrl, axios_config).then((res) => {
-                if (res.status == 521) {
-                    console.log("Failed fetching Asus Product Page for " + cardUrl);
-                } else if (res.status == 404) {
-                    //const out_of_stock = res.data.includes("Dieser Artikel ist leider nicht mehr verfügbar!");
-                    console.log("Card not listed anymore for " + cardUrl);
-                } else {
-                    const html = parse(res.data);
-                    const card = {}
-                    card.title = html.querySelector(".product--article-name").text
-                    const in_stock = (html.querySelectorAll(".buybox--button").length == 1);
-                    if (in_stock) {
-                        const html = parse(res.data);
-                        card.href = cardUrl;
-                        card.price = parseFloat(html.querySelector('[itemprop="price"]').getAttribute("content"));
-                        const id = card.href;
-
-                        console.log(card.title + " for " + card.price);
-                        deals[id] = card;
+            try {
+                const req = axios.get(cardUrl, axios_config).then((res) => {
+                    if (res.status == 521) {
+                        console.log("Failed fetching Asus Product Page for " + cardUrl);
+                    } else if (res.status == 404) {
+                        //const out_of_stock = res.data.includes("Dieser Artikel ist leider nicht mehr verfügbar!");
+                        console.log("Card not listed anymore for " + cardUrl);
                     } else {
-                        const out_of_stock = html.querySelector(".is--error").textContent.includes("Nicht verfügbar");
-                        if (!out_of_stock) {
-                            console.log("Could not figure out Stock Status for " + cardUrl);
-                            bot.sendMessage(debug_chat_id, "Could not figure out Stock Status for " + cardUrl);
+                        const html = parse(res.data);
+                        const card = {}
+                        card.title = html.querySelector(".product--article-name").text
+                        const in_stock = (html.querySelectorAll(".buybox--button").length == 1);
+                        if (in_stock) {
+                            const html = parse(res.data);
+                            card.href = cardUrl;
+                            card.price = parseFloat(html.querySelector('[itemprop="price"]').getAttribute("content"));
+                            const id = card.href;
+
+                            console.log(card.title + " for " + card.price);
+                            deals[id] = card;
+                        } else {
+                            const out_of_stock = html.querySelector(".is--error").textContent.includes("Nicht verfügbar");
+                            if (!out_of_stock) {
+                                console.log("Could not figure out Stock Status for " + cardUrl);
+                                bot.sendMessage(debug_chat_id, "Could not figure out Stock Status for " + cardUrl);
+                            }
                         }
                     }
-                }
-            });
-            requests.push(req);
+                });
+                requests.push(req);
+            } catch (err) {
+                bot.sendMessage(debug_chat_id, "An error occurred fetching the Asus Product Page: ```\n" + error.stack + "\n```", { parse_mode: 'MarkdownV2' });
+            }
         }
 
         await Promise.all(requests);
