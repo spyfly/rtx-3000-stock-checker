@@ -28,25 +28,35 @@ async function main() {
         headers: { 'User-Agent': config.browser.user_agent }
     }
 
-    //Using a proxy
-    if (config.asus_webshop.proxies) {
-        const imposter = require('../libs/imposter.js');
-
-        proxy = await imposter.getRandomProxy();
-        browserDetails = await imposter.getBrowserDetails(proxy);
-        axios_config.httpsAgent = new SocksProxyAgent(proxy);
-        axios_config.headers = { 'User-Agent': browserDetails.userAgent }
-    }
+    axios_config.validateStatus = function (status) {
+        return (status == 200 || status == 403);
+    };
 
     try {
         var deals = {};
         var i = 0;
         var response;
-        while (i < 5)
+        while (i < 3)
             try {
                 i++;
+
+                //Using a proxy
+                if (config.asus_webshop.proxies) {
+                    const imposter = require('../libs/imposter.js');
+
+                    proxy = await imposter.getRandomProxy();
+                    browserDetails = await imposter.getBrowserDetails(proxy);
+                    axios_config.httpsAgent = new SocksProxyAgent(proxy);
+                    axios_config.headers = { 'User-Agent': browserDetails.userAgent }
+                }
+
                 response = await axios.get(asusWebShopUrl, axios_config);
-                i = 10;
+                if (response.status == 200) {
+                    i = 10;
+                } else {
+                    console.log(response.statusText)
+                    console.log(browserDetails.userAgent);
+                }
             } catch (err) {
                 console.log("Failed fetching Asus Product Overview: " + err.message)
             }
