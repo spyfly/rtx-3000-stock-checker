@@ -1,10 +1,8 @@
 process.env["NTBA_FIX_319"] = 1;
-const axios = require('axios').default;
-const { SocksProxyAgent } = require('socks-proxy-agent');
-
 const TelegramBot = require('node-telegram-bot-api');
 
 const { performance } = require('perf_hooks');
+const { firefox } = require('playwright-extra')
 
 const config = require('../config.json');
 const bot = new TelegramBot(config.services.telegram.token);
@@ -21,212 +19,111 @@ const { parse } = require('node-html-parser');
 async function main() {
     var usedProxies = [];
 
-    var cardUrls = await getCardUrls();
-    const asusWebShopUrl = 'https://webshop.asus.com/de/komponenten/grafikkarten/rtx-30-serie/?p=1&n=48';
-
-    var axios_config = {
-        headers: { 'User-Agent': config.browser.user_agent }
-    }
-
-    axios_config.validateStatus = function (status) {
-        return (status == 200 || status == 403);
-    };
+    const asusWebShopUrls = [
+        'https://webshop.asus.com/de/search?sSearch=3060',
+        'https://webshop.asus.com/de/search?sSearch=3070',
+        'https://webshop.asus.com/de/search?sSearch=3080',
+        'https://webshop.asus.com/de/search?sSearch=3090'
+    ];
+    const browser = await firefox.launch({
+        proxy: {
+            server: 'socks5://1.1.1.1:1080',
+        },
+        extraHTTPHeaders: {
+            DNT: "1"
+        },
+        locale: 'de-DE',
+        timezoneId: 'Europe/Berlin'
+    });
 
     try {
         var deals = {};
         var i = 0;
         var response;
-        while (i < 3)
-            try {
-                i++;
+        for (const url of asusWebShopUrls) {
+            response = await playwrightHttpRequest(url);
+            const root = parse(response.data);
+            const productsBox = root.querySelector('.listing');
+            const products = productsBox.querySelectorAll('.product--info');
+            console.log(products.length + " Products found.")
 
-                //Using a proxy
-                if (config.asus_webshop.proxies) {
-                    const imposter = require('../libs/imposter.js');
+            products.forEach(async product => {
+                const card = {}
+                card.title = product.querySelector('.product--title').getAttribute("title");
+                card.href = product.querySelector('.product--title').getAttribute("href");
+                card.price = parseFloat(product.querySelector('.price--default').textContent.replace(".", "").replace(",", "."));
+                const id = card.href;
 
-                    proxy = await imposter.getRandomProxy();
-                    browserDetails = await imposter.getBrowserDetails(proxy);
-                    axios_config.httpsAgent = new SocksProxyAgent(proxy);
-                    axios_config.headers = { 'User-Agent': browserDetails.userAgent }
+                const out_of_stock = product.querySelector('.product--delivery').text.includes('Aktuell nicht verfügbar');
+                //Card is a 3000 Series
+                if (card.title.includes("RTX30")) {
+                    if (!out_of_stock) {
+                        console.log(card.title + " for " + card.price);
+                        deals[id] = card;
+                    }
                 }
-
-                response = await axios.get(asusWebShopUrl, axios_config);
-                if (response.status == 200) {
-                    i = 10;
-                } else {
-                    console.log(response.statusText)
-                    console.log(browserDetails.userAgent);
-                }
-            } catch (err) {
-                console.log("Failed fetching Asus Product Overview: " + err.message)
-            }
-
-        const root = parse(response.data);
-        const productsBox = root.querySelector('.listing');
-        const products = productsBox.querySelectorAll('.product--info');
-        console.log(products.length + " Products found.")
-
-        products.forEach(async product => {
-            const card = {}
-            card.title = product.querySelector('.product--title').getAttribute("title");
-            card.href = product.querySelector('.product--title').getAttribute("href");
-            card.price = parseFloat(product.querySelector('.price--default').textContent.replace(".", "").replace(",", "."));
-            const id = card.href;
-
-            const out_of_stock = product.querySelector('.product--delivery').text.includes('Aktuell nicht verfügbar');
-            //Card is a 3000 Series
-            if (!out_of_stock) {
-                console.log(card.title + " for " + card.price);
-                deals[id] = card;
-            }
-
-            if (!cardUrls.includes(card.href)) {
-                cardUrls.push(card.href);
-            }
-        });
-
-        axios_config.validateStatus = function (status) {
-            return (status >= 200 && status < 300) || status == 404 || status == 521;
-        };
+            });
+        }
 
         const time = performance.now();
 
-        //Only check 3060 Ti/3070 and 3080 directly
-        //cardUrls = cardUrls.filter(cardUrl => cardUrl.includes("3060ti") || cardUrl.includes("3070") || cardUrl.includes("3080"))
-
-        var requests = [];
-        var failedRequests = [];
-
-        for (const cardUrl of cardUrls) {
-            const imposter = require('../libs/imposter.js');
-
-            //Using a proxy
-            if (config.asus_webshop.proxies) {
-                foundProxy = false;
-                while (foundProxy = false) {
-                    proxy = await imposter.getRandomProxy();
-                    if (!usedProxies.includes(proxy)) {
-                        foundProxy = true;
-                    }
-                }
-                browserDetails = await imposter.getBrowserDetails(proxy);
-                axios_config.httpsAgent = new SocksProxyAgent(proxy);
-                axios_config.headers = { 'User-Agent': browserDetails.userAgent }
-            }
-            const req = axios.get(cardUrl, axios_config).then((res) => {
-                if (res.status == 521) {
-                    console.log("Failed fetching Asus Product Page for " + cardUrl);
-                } else if (res.status == 404) {
-                    //const out_of_stock = res.data.includes("Dieser Artikel ist leider nicht mehr verfügbar!");
-                    console.log("Card not listed anymore for " + cardUrl);
-                } else {
-                    const html = parse(res.data);
-                    const card = {}
-                    card.title = html.querySelector(".product--article-name").text
-                    const in_stock = (html.querySelectorAll(".buybox--button").length == 1);
-                    if (in_stock) {
-                        const html = parse(res.data);
-                        card.href = cardUrl;
-                        card.price = parseFloat(html.querySelector('[itemprop="price"]').getAttribute("content"));
-                        const id = card.href;
-
-                        console.log(card.title + " for " + card.price);
-                        deals[id] = card;
-                    } else {
-                        const out_of_stock = html.querySelector(".is--error").textContent.includes("Nicht verfügbar");
-                        if (!out_of_stock) {
-                            console.log("Could not figure out Stock Status for " + cardUrl);
-                            bot.sendMessage(debug_chat_id, "Could not figure out Stock Status for " + cardUrl);
-                        }
-                    }
-                }
-            }, (err) => {
-                console.log("Failed fetching Asus Product Page for " + cardUrl + " | Err: " + err + " | User-Agent: " + browserDetails.userAgent);
-                imposter.generateNewDetails(proxy);
-                failedRequests.push(cardUrl);
-            });
-            requests.push(req);
-        }
-
-        await Promise.all(requests);
-        if (failedRequests.length > 0) {
-            bot.sendMessage(debug_chat_id, "Failed fetching " + failedRequests.length + "/" + cardUrls.length + " CardUrls: ```\n" + failedRequests.join('\n') + "\n```", { parse_mode: 'MarkdownV2' });
-
-        }
+        console.log("Closing browser")
+        await browser.close();
 
         //Processing Notifications
         await deal_notify(deals, 'asus_webshop_deals', 'asus');
-
-        console.log("Checked " + cardUrls.length + ` Asus Product Pages directly in ${((performance.now() - time) / 1000).toFixed(2)} s`)
         db.close();
     } catch (error) {
         console.log(error);
         bot.sendMessage(debug_chat_id, "An error occurred fetching the Asus Webshop Page: ```\n" + error.stack + "\n```", { parse_mode: 'MarkdownV2' });
     }
-}
 
-async function getCardUrls() {
-    var cardUrlsLastUpdate = 0
-    try {
-        cardUrlsLastUpdate = await db.get('asus_webshop_cardurls_last_update');
-    } catch {
-        console.log("Failed fetching asus_webshop_cardurls_last_update (Key Value Store not initialized yet propably)");
-    }
+    async function playwrightHttpRequest(url) {
+        var result;
+        if (config.asus_webshop.proxies) {
+            const imposter = require('../libs/imposter.js');
 
-    const now = Math.floor(Date.now() / 1000);
-    //Update CardUrls once per day
-    if (cardUrlsLastUpdate + 86400 > now) {
-        try {
-            cardUrls = JSON.parse(await db.get('asus_webshop_cardurls'));
-
-            return cardUrls;
-        } catch {
-            console.log("Failed fetching asus_webshop_cardurls (Key Value Store not initialized yet propably)");
+            var proxy;
+            foundProxy = false;
+            while (foundProxy == false) {
+                proxy = await imposter.getRandomProxy();
+                if (!usedProxies.includes(proxy)) {
+                    foundProxy = true;
+                    usedProxies.push(proxy);
+                }
+            }
+            browserDetails = await imposter.getBrowserDetails(proxy);
+            const ctx = browser.newContext({
+                proxy: {
+                    server: proxy
+                },
+                userAgent: browserDetails.userAgent,
+                viewport: browserDetails.viewport
+            });
+            const page = await (await ctx).newPage();
+            const res = await page.goto(url);
+            console.log(await page.evaluate(() => navigator.userAgent));
+            var status = res.status()
+            console.log(status);
+            if (status == 429) {
+                console.log("Rate limited!");
+            } else if (status == 200) {
+                result = await res.text();
+                i = 10;
+            } else if (status == 403) {
+                const resp = await page.waitForNavigation({ timeout: 10000 });
+                if (resp.status() == 200) {
+                    result = await res.text();
+                }
+                status = resp.status();
+            }
+            await (await ctx).close();
+            return {
+                status: status,
+                data: result
+            };
         }
     }
-
-    const sitemapUrl = 'https://webshop.asus.com/de/web/sitemap/shop-1/sitemap-1.xml.gz';
-
-    const zlib = require('zlib');
-    const util = require('util');
-    const gunzip = util.promisify(zlib.gunzip);
-
-    var axios_config = {
-        headers: { 'User-Agent': config.browser.user_agent }
-    }
-
-    //Using a proxy
-    if (config.asus_webshop.proxies) {
-        const imposter = require('../libs/imposter.js');
-
-        proxy = await imposter.getRandomProxy();
-        browserDetails = await imposter.getBrowserDetails(proxy);
-        axios_config.httpsAgent = new SocksProxyAgent(proxy);
-        axios_config.headers = { 'User-Agent': browserDetails.userAgent }
-    }
-
-    var cardUrls = []
-
-    axios_config.responseType = 'arraybuffer'
-    const response = await axios.get(sitemapUrl, axios_config);
-
-    const xmlSitemap = (await gunzip(response.data)).toString();
-    const parser = require('fast-xml-parser');
-    const jsonSitemap = parser.parse(xmlSitemap);
-    for (const urlObj of jsonSitemap.urlset.url) {
-        if (urlObj.loc.includes("rtx30") && urlObj.loc.includes("grafikkarten"))
-            cardUrls.push(urlObj.loc)
-    }
-
-    console.log(cardUrls)
-    await db.put('asus_webshop_cardurls_last_update', now);
-    await db.put('asus_webshop_cardurls', JSON.stringify(cardUrls));
-
-    return cardUrls;
 }
 
 main();
-
-function sleep(time) {
-    return new Promise((resolve) => setTimeout(resolve, time));
-}
