@@ -36,38 +36,42 @@ async function main() {
         timezoneId: 'Europe/Berlin'
     });
 
+    const time = performance.now();
+
     try {
         var deals = {};
         var i = 0;
         var response;
+        var responses = [];
         for (const url of asusWebShopUrls) {
-            response = await playwrightHttpRequest(url);
-            const root = parse(response.data);
-            const productsBox = root.querySelector('.listing');
-            const products = productsBox.querySelectorAll('.product--info');
-            console.log(products.length + " Products found.")
+            response = playwrightHttpRequest(url).then(async (response) => {
+                const root = parse(response.data);
+                const productsBox = root.querySelector('.listing');
+                const products = productsBox.querySelectorAll('.product--info');
+                console.log(products.length + " Products found.")
 
-            products.forEach(async product => {
-                const card = {}
-                card.title = product.querySelector('.product--title').getAttribute("title");
-                card.href = product.querySelector('.product--title').getAttribute("href");
-                card.price = parseFloat(product.querySelector('.price--default').textContent.replace(".", "").replace(",", "."));
-                const id = card.href;
+                products.forEach(async product => {
+                    const card = {}
+                    card.title = product.querySelector('.product--title').getAttribute("title");
+                    card.href = product.querySelector('.product--title').getAttribute("href");
+                    card.price = parseFloat(product.querySelector('.price--default').textContent.replace(".", "").replace(",", "."));
+                    const id = card.href;
 
-                const out_of_stock = product.querySelector('.product--delivery').text.includes('Aktuell nicht verfügbar');
-                //Card is a 3000 Series
-                if (card.title.includes("RTX30")) {
-                    if (!out_of_stock) {
-                        console.log(card.title + " for " + card.price);
-                        deals[id] = card;
+                    const out_of_stock = product.querySelector('.product--delivery').text.includes('Aktuell nicht verfügbar');
+                    //Card is a 3000 Series
+                    if (card.title.includes("RTX30")) {
+                        if (!out_of_stock) {
+                            console.log(card.title + " for " + card.price);
+                            deals[id] = card;
+                        }
                     }
-                }
+                });
             });
+            responses.push(response);
         }
+        await Promise.all(responses);
 
-        const time = performance.now();
-
-        console.log("Closing browser")
+        console.log("Checked " + asusWebShopUrls.length + ` Asus Product Overview Pages in ${((performance.now() - time) / 1000).toFixed(2)} s`)
         await browser.close();
 
         //Processing Notifications
