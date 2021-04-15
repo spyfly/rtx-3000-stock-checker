@@ -1,12 +1,14 @@
 var dateFormat = require('dateformat');
 
 const config = require('../config.json');
+const is_good_deal = require('./is_good_deal.js');
 
 const level = require('level-party')
 
 const TelegramBot = require('node-telegram-bot-api');
 const bot = new TelegramBot(config.services.telegram.token);
 const chat_id = config.services.telegram.chat_id;
+const deals_chat_id = config.services.telegram.deals_chat_id;
 
 const axios = require('axios').default;
 
@@ -23,14 +25,19 @@ module.exports = async function (deals, db_index, shop_name) {
     // New Deal Notification
     for (const [id, deal] of Object.entries(deals)) {
         if (!oldDeals[id]) {
-            //Notify about new Deal
-            const { message_id } = await bot.sendMessage(chat_id, createMessage(deal), { parse_mode: 'HTML', disable_web_page_preview: true })
-
             //Trigger AutoBuy
             if (config.autobuy.enabled)
                 axios.post(config.autobuy.url + '/trigger', { shop: shop_name, deal: deal }).then(null, () => {
                     console.log("Failed triggering AutoBuy for " + deal.title)
                 })
+
+            //Notify about new Deal
+            if (is_good_deal(deal)) {
+                console.log("Good deal!");
+                const { message_id } = await bot.sendMessage(deals_chat_id, createMessage(deal), { parse_mode: 'HTML', disable_web_page_preview: true })
+                deals[id].deal_message_id = message_id;
+            }
+            const { message_id } = await bot.sendMessage(chat_id, createMessage(deal), { parse_mode: 'HTML', disable_web_page_preview: true })
 
             //Store Message ID
             deals[id].message_id = message_id;
@@ -62,10 +69,25 @@ module.exports = async function (deals, db_index, shop_name) {
                 } catch (err) {
                     console.log("Couldn't edit message!");
                 }
+
+                //Good Deals Notify
+                if (deal.deal_message_id)
+                    try {
+                        await bot.editMessageText(createMessage(deal), {
+                            chat_id: deals_chat_id,
+                            message_id: deal.deal_message_id,
+                            parse_mode: 'HTML',
+                            disable_web_page_preview: true
+                        })
+                    } catch (err) {
+                        console.log("Couldn't edit message!");
+                    }
             }
         } else {
-            //Preserve Message ID
+            //Preserve Message IDs
             deals[id].message_id = deal.message_id;
+            if (deal.deal_message_id)
+                deals[id].deal_message_id = deal.deal_message_id;
         }
     }
 
