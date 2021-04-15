@@ -74,6 +74,9 @@ async function main() {
         await deal_notify(deals, 'asus_webshop_deals', 'asus');
         db.close();
     } catch (error) {
+        console.log("Closing browser after crash!")
+        await browser.close();
+
         console.log(error);
         bot.sendMessage(debug_chat_id, "An error occurred fetching the Asus Webshop Page: ```\n" + error.stack + "\n```", { parse_mode: 'MarkdownV2' });
     }
