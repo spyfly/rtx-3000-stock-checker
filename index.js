@@ -14,12 +14,10 @@ const bree = new Bree({
     {
       name: 'check_nbb',
       interval: config.nbb.check_interval,
-      closeWorkerAfterMs: 9500
     },
     {
       name: 'check_asus_webshop',
       interval: config.asus_webshop.check_interval,
-      closeWorkerAfterMs: 9500
     },
     {
       name: 'check_alternate',
