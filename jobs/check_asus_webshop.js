@@ -36,6 +36,12 @@ async function main() {
         timezoneId: 'Europe/Berlin'
     });
 
+    setTimeout(async () => {
+        await browser.close();
+        await bot.sendMessage(debug_chat_id, "An error occurred fetching the Asus Webshop Page: Closed Browser after 120 seconds!", { parse_mode: 'MarkdownV2' });
+        process.exit(1);
+    }, 120 * 1000);
+
     const time = performance.now();
 
     try {
