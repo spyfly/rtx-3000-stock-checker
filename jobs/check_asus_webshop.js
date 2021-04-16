@@ -9,9 +9,6 @@ const bot = new TelegramBot(config.services.telegram.token);
 const chat_id = config.services.telegram.chat_id;
 const debug_chat_id = config.services.telegram.debug_chat_id;
 
-const level = require('level-party')
-var db = level('./status', { valueEncoding: 'json' })
-
 const deal_notify = require('../libs/deal_notify.js');
 
 const { parse } = require('node-html-parser');
@@ -36,7 +33,7 @@ async function main() {
         timezoneId: 'Europe/Berlin'
     });
 
-    setTimeout(async () => {
+    const timeout = setTimeout(async () => {
         await browser.close();
         await bot.sendMessage(debug_chat_id, "An error occurred fetching the Asus Webshop Page: Closed Browser after 120 seconds!", { parse_mode: 'MarkdownV2' });
         process.exit(1);
@@ -82,7 +79,8 @@ async function main() {
 
         //Processing Notifications
         await deal_notify(deals, 'asus_webshop_deals', 'asus');
-        db.close();
+
+        clearTimeout(timeout);
     } catch (error) {
         console.log("Closing browser after crash!")
         await browser.close();
