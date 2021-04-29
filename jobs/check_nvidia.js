@@ -8,6 +8,8 @@ const TelegramBot = require('node-telegram-bot-api');
 const config = require('../config.json');
 const bot = new TelegramBot(config.services.telegram.token);
 const chat_id = config.services.telegram.chat_id;
+const debug_chat_id = config.services.telegram.debug_chat_id;
+const deals_chat_id = config.services.telegram.deals_chat_id;
 
 const imposter = require('../libs/imposter.js');
 
@@ -61,6 +63,7 @@ async function main() {
                 db.get(db_key, function (err, oldStatus) {
                     if (oldStatus != status) {
                         bot.sendMessage(chat_id, message);
+                        bot.sendMessage(deals_chat_id, message);
                         db.put(db_key, status, function (err) { });
                     }
                 });
@@ -70,7 +73,7 @@ async function main() {
         });
     } catch (error) {
         console.log(error);
-        bot.sendMessage(chat_id, "An error occurred fetching Nvidias page, cards may be available: " + nvShopUrl);
+        bot.sendMessage(debug_chat_id, "An error occurred fetching Nvidias page, cards may be available: " + nvShopUrl);
     }
 }
 
