@@ -12,6 +12,7 @@ const debug_chat_id = config.services.telegram.debug_chat_id;
 const deals_chat_id = config.services.telegram.deals_chat_id;
 
 const imposter = require('../libs/imposter.js');
+const fs = require('fs').promises;
 
 const level = require('level-party')
 var db = level('./status', { valueEncoding: 'json' })
