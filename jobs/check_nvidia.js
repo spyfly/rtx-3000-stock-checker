@@ -49,6 +49,11 @@ async function main() {
 
                 if (product.prdStatus != 'out_of_stock' || product.purchaseOption != '' || product.isOffer != false) {
                     status = "in_stock";
+                    try {
+                        fs.writeFile('debug_nvidia_fe' + card.replace(" ", "_") + '.json', JSON.stringify(product));
+                    } catch (err) {
+                        console.log("Failed storing example JSON for " + card)
+                    }
                     if (config.nvidia.debug)
                         console.log("> Is in stock!")
                 } else {
