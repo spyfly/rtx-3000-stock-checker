@@ -263,7 +263,8 @@ async function getProducts(store, override = false) {
         const userDataJson = await userDataResp.json();
         console.log("Selected Store: " + userDataJson.data.store)
         if (userDataJson.data.store == null) {
-            await page.evaluate(() => document.querySelectorAll('[class^=DropdownButton__StyledContentGrid]')[1].click());
+            await page.evaluate(() => document.querySelectorAll('[class^=DropdownButton__StyledContentGrid]')[1].id = "market_dropdown_btn");
+            await page.click('#market_dropdown_btn', { timeout: 5000 });
             await page.fill('[data-test="mms-marketselector-input"]', "Berlin");
             await page.evaluate(() => document.querySelector('button[class^="NoMarketAvailable__StyledButton"]').click());
             await page.waitForSelector('[data-test="mms-market-selector-button"]', { timeout: 5000 });
