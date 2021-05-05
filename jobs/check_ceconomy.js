@@ -281,7 +281,7 @@ async function getProducts(store, override = false) {
             await page.click('#market_dropdown_btn', { timeout: 5000 });
             await page.fill('[data-test="mms-marketselector-input"]', "Berlin");
             await page.press('[data-test="mms-marketselector-input"]', 'Enter');
-            await page.click('#market_search_btn', { timeout: 5000 });
+
             try {
                 await page.waitForSelector('[data-test="mms-market-selector-button"]', { timeout: 5000 });
             } catch {
