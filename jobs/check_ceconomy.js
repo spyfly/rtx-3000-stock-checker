@@ -184,7 +184,7 @@ async function getProducts(store, override = false) {
                 const resp = await request.response();
                 try {
                     const json = await resp.json();
-                    console.log("Closest stores: ");
+                    console.log("Closest stores for " + store.name + ": ");
                     console.log(json);
                 } catch (error) {
                     console.log("Failed parsing JSON for closest stores! Status: " + resp.status());
