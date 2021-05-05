@@ -23,7 +23,6 @@ const chat_id = config.services.telegram.chat_id;
 const debug_chat_id = config.services.telegram.debug_chat_id;
 
 const imposter = require('../libs/imposter.js');
-const { exit } = require('process');
 
 (async () => {
     var tasks = [];
@@ -108,6 +107,7 @@ async function getProducts(store, override = false) {
         recordVideo: {
             dir: '/tmp/videos/rtx-3000-stock-checker'
         },
+        headless: false,
         userAgent: config.browser.user_agent,
         viewport: {
             width: 1280,
@@ -160,16 +160,23 @@ async function getProducts(store, override = false) {
     const videoPath = await page.video().path();
 
     var products = [];
+    var requests = [];
 
     try {
         const now = Math.floor(Date.now() / 1000);
 
         //Fetching collectionIds
         const storeUrl = 'https://' + store.url + '/de/campaign/grafikkarten-nvidia-geforce-rtx-30';
-        // Abort based on the request type
-        page.on('request', async request => {
-            if (request.url().includes("graphql?operationName=GetProductCollectionContent")) {
-                const resp = await request.response();
+        await page.addInitScript(
+            () => Object.defineProperty(navigator.serviceWorker, 'register', { get: Promise.reject })
+        );
+
+        page.route(/GetProductCollectionContent/g, async route => {
+            const newUrl = route.request().url().replace("limit%22%3A6", "limit%22%3A18").replace("startItemIndex%22%3A6", "startItemIndex%22%3A0")
+            route.continue({ url: newUrl });
+            //console.log(newUrl);
+
+            const request = route.request().response().then(async (resp) => {
                 try {
                     const json = await resp.json();
                     for (value of json.data.productCollectionContent.items.visible) {
@@ -179,21 +186,9 @@ async function getProducts(store, override = false) {
                     console.log("Failed parsing JSON! Status: " + resp.status());
                     bot.sendMessage(debug_chat_id, "An error occurred fetching the JSON for " + store.name + " Webshop Page: " + error.message);
                 }
-
-            } else if (request.url().includes("graphql?operationName=GetClosestStores")) {
-                const resp = await request.response();
-                try {
-                    const json = await resp.json();
-                    console.log("Closest stores for " + store.name + ": ");
-                    console.log(json);
-                } catch (error) {
-                    console.log("Failed parsing JSON for closest stores! Status: " + resp.status());
-                    bot.sendMessage(debug_chat_id, "An error occurred fetching the JSON for " + store.name + " Webshop Page: " + error.message);
-                }
-            }
+            });
+            requests.push(request);
         });
-
-        const userDataRequest = page.waitForRequest(/GetUser/g);
 
         let time = performance.now();
         await page.goto(storeUrl, { waitUntil: 'load', timeout: 30000 });
@@ -265,46 +260,25 @@ async function getProducts(store, override = false) {
             }
         }
 
-        var clickAwayCookies = {};
         const foundCookieBtn = await page.evaluate(() => document.querySelectorAll('#privacy-layer-accept-all-button').length);
         console.log("CookieBtns: " + foundCookieBtn);
         if (foundCookieBtn > 0) {
-            clickAwayCookies = page.click('#privacy-layer-accept-all-button', { timeout: 1000 });
+            await page.click('#privacy-layer-accept-all-button', { timeout: 1000 });
         }
 
-        const [_, userData] = await Promise.all([clickAwayCookies, userDataRequest]);
-        const userDataResp = await userData.response();
-        const userDataJson = await userDataResp.json();
-        console.log("Selected Store: " + userDataJson.data.store)
-        if (userDataJson.data.store == null) {
-            await page.evaluate(() => document.querySelectorAll('[class^=DropdownButton__StyledContentGrid]')[1].id = "market_dropdown_btn");
-            await page.click('#market_dropdown_btn', { timeout: 5000 });
-            await page.fill('[data-test="mms-marketselector-input"]', "Berlin");
-            await page.press('[data-test="mms-marketselector-input"]', 'Enter');
-
-            try {
-                await page.waitForSelector('[data-test="mms-market-selector-button"]', { timeout: 10000 });
-            } catch {
-                console.log("Trying again to find Store!");
-                await page.evaluate(() => document.querySelectorAll('[placeholder="PLZ/Stadt"]')[1].id = "market_marketselector_input");
-                await page.fill('#market_marketselector_input', "Berlin");
-                await page.press('#market_marketselector_input', 'Enter');
-                await page.waitForSelector('[data-test="mms-market-selector-button"]', { timeout: 5000 });
-            }
-            await page.evaluate(() => document.querySelector('[data-test="mms-market-selector-button"]').click());
+        await page.waitForSelector("div[class^='Cellstyled__StyledCell'] > button[class^='Buttonstyled__StyledButt']", { timeout: 15000 });
+        for (var i = 0; i < 5; i++) {
+            await page.evaluate((i) => document.querySelectorAll("div[class^='Cellstyled__StyledCell'] > button[class^='Buttonstyled__StyledButt']")[i].id = "req_" + i, i);
         }
 
-        var btnCount = await page.evaluate(() => document.querySelectorAll("div[class^='Cellstyled__StyledCell'] > button[class^='Buttonstyled__StyledButt']").length);
-        while (btnCount > 0) {
-            try {
-                await page.click("div[class^='Cellstyled__StyledCell'] > button[class^='Buttonstyled__StyledButt']", { timeout: 1000 });
-            } catch { }
-            btnCount = await page.evaluate(() => document.querySelectorAll("div[class^='Cellstyled__StyledCell'] > button[class^='Buttonstyled__StyledButt']").length);
+        for (var i = 0; i < 5; i++) {
+            await page.click('#req_' + i)
         }
 
+        await Promise.all(requests);
         await imposter.updateCookies(proxy, await context.cookies());
         await browser.close();
-        await page.waitForLoadState('networkidle');
+
         if (expectedTotalProducts != products.length) {
             console.log("Total product count of " + products.length + " didn't match expected count of " + expectedTotalProducts + " on " + store.name + "!");
         }
@@ -313,7 +287,8 @@ async function getProducts(store, override = false) {
         await browser.close();
 
         const errMsg = "An error occurred fetching the " + store.name + " Webshop Page: " + error.message;
-        bot.sendVideo(debug_chat_id, videoPath, { caption: errMsg });
+        console.log(errMsg)
+        //bot.sendVideo(debug_chat_id, videoPath, { caption: errMsg });
     }
     return products;
 
