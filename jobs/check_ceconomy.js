@@ -266,7 +266,8 @@ async function getProducts(store, override = false) {
             await page.evaluate(() => document.querySelectorAll('[class^=DropdownButton__StyledContentGrid]')[1].id = "market_dropdown_btn");
             await page.click('#market_dropdown_btn', { timeout: 5000 });
             await page.fill('[data-test="mms-marketselector-input"]', "Berlin");
-            await page.evaluate(() => document.querySelector('button[class^="NoMarketAvailable__StyledButton"]').click());
+            await page.evaluate(() => document.querySelector('button[class^="NoMarketAvailable__StyledButton"]').id = "market_search_btn");
+            await page.click('#market_search_btn', { timeout: 5000 });
             await page.waitForSelector('[data-test="mms-market-selector-button"]', { timeout: 5000 });
             await page.evaluate(() => document.querySelector('[data-test="mms-market-selector-button"]').click());
         }
