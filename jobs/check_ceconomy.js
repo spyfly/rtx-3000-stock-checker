@@ -105,6 +105,9 @@ async function checkCeconomy(storeId) {
 
 async function getProducts(store, override = false) {
     var browser_context = {
+        recordVideo: {
+            dir: '/tmp/videos/rtx-3000-stock-checker'
+        },
         userAgent: config.browser.user_agent,
         viewport: {
             width: 1280,
@@ -154,6 +157,7 @@ async function getProducts(store, override = false) {
     const browser = await chromium.launch(browser_context);
     const context = await browser.newContext(browser_context);
     const page = await context.newPage();
+    const videoPath = await page.video().path();
 
     var products = [];
 
@@ -284,18 +288,19 @@ async function getProducts(store, override = false) {
             btnCount = await page.evaluate(() => document.querySelectorAll("div[class^='Cellstyled__StyledCell'] > button[class^='Buttonstyled__StyledButt']").length);
         }
 
+        await imposter.updateCookies(proxy, await context.cookies());
+        await browser.close();
         await page.waitForLoadState('networkidle');
         if (expectedTotalProducts != products.length) {
             console.log("Total product count of " + products.length + " didn't match expected count of " + expectedTotalProducts + " on " + store.name + "!");
         }
     } catch (error) {
-        const errMsg = "An error occurred fetching the " + store.name + " Webshop Page: " + error.message;
-        await page.screenshot({ path: 'debug_' + store.name + '_failure.png' });
-        bot.sendPhoto(debug_chat_id, 'debug_' + store.name + '_failure.png', { caption: errMsg });
-    }
+        await imposter.updateCookies(proxy, await context.cookies());
+        await browser.close();
 
-    await imposter.updateCookies(proxy, await context.cookies());
-    await browser.close();
+        const errMsg = "An error occurred fetching the " + store.name + " Webshop Page: " + error.message;
+        bot.sendVideo(debug_chat_id, videoPath, { caption: errMsg });
+    }
     return products;
 
 }
