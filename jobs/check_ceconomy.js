@@ -283,7 +283,7 @@ async function getProducts(store, override = false) {
             await page.press('[data-test="mms-marketselector-input"]', 'Enter');
 
             try {
-                await page.waitForSelector('[data-test="mms-market-selector-button"]', { timeout: 5000 });
+                await page.waitForSelector('[data-test="mms-market-selector-button"]', { timeout: 10000 });
             } catch {
                 console.log("Trying again to find Store!");
                 await page.evaluate(() => document.querySelectorAll('[placeholder="PLZ/Stadt"]')[1].id = "market_marketselector_input");
