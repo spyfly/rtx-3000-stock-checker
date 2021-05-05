@@ -107,7 +107,6 @@ async function getProducts(store, override = false) {
         recordVideo: {
             dir: '/tmp/videos/rtx-3000-stock-checker'
         },
-        headless: false,
         userAgent: config.browser.user_agent,
         viewport: {
             width: 1280,
