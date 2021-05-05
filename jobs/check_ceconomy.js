@@ -280,13 +280,17 @@ async function getProducts(store, override = false) {
             await page.evaluate(() => document.querySelectorAll('[class^=DropdownButton__StyledContentGrid]')[1].id = "market_dropdown_btn");
             await page.click('#market_dropdown_btn', { timeout: 5000 });
             await page.fill('[data-test="mms-marketselector-input"]', "Berlin");
-            await page.evaluate(() => document.querySelector('button[class^="NoMarketAvailable__StyledButton"]').id = "market_search_btn");
-            const marketSearchBtnDisabled = await page.evaluate(() => document.querySelector('#market_search_btn').disabled);
-            if (marketSearchBtnDisabled) {
-                console.log("Market Search Button is disabled!");
-            }
+            await page.press('[data-test="mms-marketselector-input"]', 'Enter');
             await page.click('#market_search_btn', { timeout: 5000 });
-            await page.waitForSelector('[data-test="mms-market-selector-button"]', { timeout: 5000 });
+            try {
+                await page.waitForSelector('[data-test="mms-market-selector-button"]', { timeout: 5000 });
+            } catch {
+                console.log("Trying again to find Store!");
+                await page.evaluate(() => document.querySelectorAll('[placeholder="PLZ/Stadt"]')[1].id = "market_marketselector_input");
+                await page.fill('#market_marketselector_input', "Berlin");
+                await page.press('#market_marketselector_input', 'Enter');
+                await page.waitForSelector('[data-test="mms-market-selector-button"]', { timeout: 5000 });
+            }
             await page.evaluate(() => document.querySelector('[data-test="mms-market-selector-button"]').click());
         }
 
