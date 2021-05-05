@@ -5,7 +5,7 @@ const { performance } = require('perf_hooks');
 
 const fs = require('fs').promises;
 
-const { chromium } = require('playwright-extra')
+const { chromium } = require('playwright')
 const RecaptchaPlugin = require('@extra/recaptcha')
 const RecaptchaOptions = {
     visualFeedback: true, // colorize reCAPTCHAs (violet = detected, green = solved)
@@ -14,7 +14,7 @@ const RecaptchaOptions = {
         token: config.services['2captcha'].token, // REPLACE THIS WITH YOUR OWN 2CAPTCHA API KEY ⚡
     },
 }
-chromium.use(RecaptchaPlugin(RecaptchaOptions))
+//chromium.use(RecaptchaPlugin(RecaptchaOptions))
 
 const deal_notify = require('../libs/deal_notify.js');
 
