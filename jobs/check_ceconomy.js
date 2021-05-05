@@ -104,9 +104,6 @@ async function checkCeconomy(storeId) {
 
 async function getProducts(store, override = false) {
     var browser_context = {
-        recordVideo: {
-            dir: '/tmp/videos/rtx-3000-stock-checker'
-        },
         userAgent: config.browser.user_agent,
         viewport: {
             width: 1280,
@@ -156,7 +153,6 @@ async function getProducts(store, override = false) {
     const browser = await chromium.launch(browser_context);
     const context = await browser.newContext(browser_context);
     const page = await context.newPage();
-    const videoPath = await page.video().path();
 
     var products = [];
     var requests = [];
@@ -287,7 +283,7 @@ async function getProducts(store, override = false) {
 
         const errMsg = "An error occurred fetching the " + store.name + " Webshop Page: " + error.message;
         console.log(errMsg)
-        //bot.sendVideo(debug_chat_id, videoPath, { caption: errMsg });
+        bot.sendMessage(debug_chat_id, errMsg);
     }
     return products;
 
