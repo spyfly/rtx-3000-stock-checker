@@ -266,6 +266,7 @@ async function getProducts(store, override = false) {
         while (btnCount != 5) {
             btnCount = await page.evaluate(() => document.querySelectorAll("div[class^='Cellstyled__StyledCell'] > button[class^='Buttonstyled__StyledButt']").length);
             await page.waitForTimeout(100);
+            console.log("Waiting for BTN Load!");
         }
         for (var i = 0; i < 5; i++) {
             await page.evaluate((i) => document.querySelectorAll("div[class^='Cellstyled__StyledCell'] > button[class^='Buttonstyled__StyledButt']")[i].id = "req_" + i, i);
