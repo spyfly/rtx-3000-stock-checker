@@ -147,7 +147,6 @@ async function getProducts(store, override = false) {
             proxy = "default"
             console.log("All proxies blacklisted, using no proxy!")
         }
-        browser_context.viewport.height = 5000;
     }
 
     //const browser = await chromium.launchPersistentContext('/tmp/rtx-3000-stock-checker/' + proxy.replace(/\./g, "-").replace(/\:/g, "_"), browser_context);
@@ -269,6 +268,7 @@ async function getProducts(store, override = false) {
             await page.waitForTimeout(1000);
             console.log("Waiting for BTN Load: " + btnCount);
             if (btnCount == 2) {
+                await (await page.$("div[class^='Cellstyled__StyledCell'] > button[class^='Buttonstyled__StyledButt']")).scrollIntoViewIfNeeded();
                 await page.screenshot({ path: 'debug_' + store.name + '_btn.png' });
                 bot.sendPhoto(debug_chat_id, 'debug_' + store.name + '_btn.png', { caption: "BTN not loading on " + store.name + " Webshop Page for IP: " + proxy });
             }
