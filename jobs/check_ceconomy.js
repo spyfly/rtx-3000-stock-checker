@@ -72,7 +72,7 @@ async function checkCeconomy(storeId) {
             const url = "https://" + store.url + "/api/v1/graphql?operationName=GetProductCollectionContent&variables=" + encodeURIComponent(JSON.stringify(itemObj)) + "&extensions=" + encodeURIComponent('{"pwa":{"salesLine":"' + store.graphQlName + '","country":"DE","language":"de"},"persistedQuery":{"version":1,"sha256Hash":"2ca5f94736d90932c29fcbe78a79af7e316149da5947085416bc26f990a19896"}}')
 
             //await page.waitForTimeout(5000);
-            await apiPage.setExtraHTTPHeaders({ 'Content-Type': 'application/json', 'apollographql-client-name': 'pwa-client', 'apollographql-client-version': apolloGraphVersion })
+            await apiPage.setExtraHTTPHeaders({ 'Content-Type': 'application/json', 'apollographql-client-name': 'pwa-client', 'apollographql-client-version': apolloGraphVersion, "x-flow-id": uuidv4() })
             const response = await apiPage.goto(url);
             console.log(store.name + ": " + response.status() + " | " + proxy);
             if (response.status() == 403 || response.status() == 429) {
@@ -90,7 +90,7 @@ async function checkCeconomy(storeId) {
                     var [browser, context, apiPage, proxy, collectionIds, apolloGraphVersion] = await getCollectionIds(store, true);
 
                     //Set proper headers
-                    await apiPage.setExtraHTTPHeaders({ 'Content-Type': 'application/json', 'apollographql-client-name': 'pwa-client', 'apollographql-client-version': apolloGraphVersion })
+                    await apiPage.setExtraHTTPHeaders({ 'Content-Type': 'application/json', 'apollographql-client-name': 'pwa-client', 'apollographql-client-version': apolloGraphVersion, "x-flow-id": uuidv4() })
 
                     // and now Reload page
                     await apiPage.goto(url);
@@ -307,4 +307,11 @@ async function getCollectionIds(store, override = false) {
     await db.put(key + '_api_version', apolloGraphVersion);
 
     return [browser, context, page, proxy, collectionIds, apolloGraphVersion];
+}
+
+function uuidv4() {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+        var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+    });
 }
