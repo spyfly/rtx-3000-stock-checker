@@ -261,18 +261,15 @@ async function getProducts(store, override = false) {
             await page.click('#privacy-layer-accept-all-button', { timeout: 1000 });
         }
 
-        await page.waitForSelector("div[class^='Cellstyled__StyledCell'] > button[class^='Buttonstyled__StyledButt']", { timeout: 15000 });
-        var btnCount = 0;
-        while (btnCount != 5) {
-            btnCount = await page.evaluate(() => document.querySelectorAll("div[class^='Cellstyled__StyledCell'] > button[class^='Buttonstyled__StyledButt']").length);
-            await page.waitForTimeout(1000);
-            console.log("Waiting for BTN Load: " + btnCount);
-            if (btnCount == 2) {
-                await (await page.$("div[class^='Cellstyled__StyledCell'] > button[class^='Buttonstyled__StyledButt']")).scrollIntoViewIfNeeded();
-                await page.screenshot({ path: 'debug_' + store.name + '_btn.png' });
-                bot.sendPhoto(debug_chat_id, 'debug_' + store.name + '_btn.png', { caption: "BTN not loading on " + store.name + " Webshop Page for IP: " + proxy });
+        for (var attempt = 0; attempt < 5; attempt++) {
+            await page.waitForSelector("div[class^='Cellstyled__StyledCell'] > button[class^='Buttonstyled__StyledButt']", { timeout: 15000 });
+            const btnCount = await page.evaluate(() => document.querySelectorAll("div[class^='Cellstyled__StyledCell'] > button[class^='Buttonstyled__StyledButt']").length);
+            if (btnCount != 5) {
+                await page.reload();
+                console.log("Reloading page, because btn didn't appear");
             }
         }
+
         for (var i = 0; i < 5; i++) {
             await page.evaluate((i) => document.querySelectorAll("div[class^='Cellstyled__StyledCell'] > button[class^='Buttonstyled__StyledButt']")[i].id = "req_" + i, i);
         }
