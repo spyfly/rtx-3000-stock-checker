@@ -262,6 +262,8 @@ async function getProducts(store, override = false) {
         }
 
         await page.waitForSelector("div[class^='Cellstyled__StyledCell'] > button[class^='Buttonstyled__StyledButt']", { timeout: 15000 });
+        const btnCount = await page.evaluate(() => document.querySelectorAll("div[class^='Cellstyled__StyledCell'] > button[class^='Buttonstyled__StyledButt']").length);
+        console.log("Buttons found: " + btnCount);
         for (var i = 0; i < 5; i++) {
             await page.evaluate((i) => document.querySelectorAll("div[class^='Cellstyled__StyledCell'] > button[class^='Buttonstyled__StyledButt']")[i].id = "req_" + i, i);
         }
