@@ -147,7 +147,7 @@ async function getProducts(store, override = false) {
             proxy = "default"
             console.log("All proxies blacklisted, using no proxy!")
         }
-        browser_context.viewport.height = 10000;
+        browser_context.viewport.height = 5000;
     }
 
     //const browser = await chromium.launchPersistentContext('/tmp/rtx-3000-stock-checker/' + proxy.replace(/\./g, "-").replace(/\:/g, "_"), browser_context);
