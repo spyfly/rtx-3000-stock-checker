@@ -261,14 +261,7 @@ async function getProducts(store, override = false) {
             await page.click('#privacy-layer-accept-all-button', { timeout: 1000 });
         }
 
-        for (var attempt = 0; attempt < 5; attempt++) {
-            await page.waitForSelector("div[class^='Cellstyled__StyledCell'] > button[class^='Buttonstyled__StyledButt']", { timeout: 15000 });
-            const btnCount = await page.evaluate(() => document.querySelectorAll("div[class^='Cellstyled__StyledCell'] > button[class^='Buttonstyled__StyledButt']").length);
-            if (btnCount != 5) {
-                await page.reload();
-                console.log("Reloading page, because btn didn't appear");
-            }
-        }
+        await page.waitForSelector("div[class^='Cellstyled__StyledCell'] > button[class^='Buttonstyled__StyledButt']", { timeout: 15000 });
 
         for (var i = 0; i < 5; i++) {
             await page.evaluate((i) => document.querySelectorAll("div[class^='Cellstyled__StyledCell'] > button[class^='Buttonstyled__StyledButt']")[i].id = "req_" + i, i);
@@ -283,7 +276,9 @@ async function getProducts(store, override = false) {
         await browser.close();
 
         if (expectedTotalProducts != products.length) {
-            console.log("Total product count of " + products.length + " didn't match expected count of " + expectedTotalProducts + " on " + store.name + "!");
+            const errMsg = "Total product count of " + products.length + " didn't match expected count of " + expectedTotalProducts + " on " + store.name + "!";
+            console.log(errMsg)
+            bot.sendMessage(debug_chat_id, errMsg);
         }
     } catch (error) {
         await imposter.updateCookies(proxy, await context.cookies());
