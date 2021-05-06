@@ -267,6 +267,10 @@ async function getProducts(store, override = false) {
             btnCount = await page.evaluate(() => document.querySelectorAll("div[class^='Cellstyled__StyledCell'] > button[class^='Buttonstyled__StyledButt']").length);
             await page.waitForTimeout(1000);
             console.log("Waiting for BTN Load: " + btnCount);
+            if (btnCount == 2) {
+                await page.screenshot({ path: 'debug_' + store.name + '_btn.png' });
+                bot.sendPhoto(debug_chat_id, 'debug_' + store.name + '_btn.png', { caption: "BTN not loading on " + store.name + " Webshop Page for IP: " + proxy });
+            }
         }
         for (var i = 0; i < 5; i++) {
             await page.evaluate((i) => document.querySelectorAll("div[class^='Cellstyled__StyledCell'] > button[class^='Buttonstyled__StyledButt']")[i].id = "req_" + i, i);
