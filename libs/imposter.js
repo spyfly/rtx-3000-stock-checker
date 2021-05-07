@@ -45,7 +45,7 @@ module.exports = {
         }
     },
 
-    getRandomProxy: async function (blacklist = "") {
+    getRandomProxy: async function (blacklist = "", localProxy = false) {
         var proxies = config.proxies;
         var blacklistedProxies = [];
         if (blacklist != "") {
@@ -55,6 +55,15 @@ module.exports = {
                 //Filter array
                 proxies = proxies.filter((el) => {
                     return !blacklistedProxies.includes(el);
+                });
+            } catch {
+                console.log("Failed getting blacklisted proxies for blacklist: " + blacklist);
+            }
+        }
+        if (localProxy) {
+            try {
+                proxies = proxies.filter((el) => {
+                    return el.includes("192.168.");
                 });
             } catch {
                 console.log("Failed getting blacklisted proxies for blacklist: " + blacklist);

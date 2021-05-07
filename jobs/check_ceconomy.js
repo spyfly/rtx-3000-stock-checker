@@ -191,12 +191,12 @@ async function getCollectionIds(store, override = false) {
 
             //Select new proxy
             if (proxy == null || override) {
-                proxy = await imposter.getRandomProxy();
+                proxy = await imposter.getRandomProxy("", config.ceconomy.local_proxy);
                 await imposter.storeProxySelection(proxy, store.name)
             }
         } else {
             // New Proxy every time
-            proxy = await imposter.getRandomProxy();
+            proxy = await imposter.getRandomProxy("", config.ceconomy.local_proxy);
         }
 
         if (proxy != undefined) {
