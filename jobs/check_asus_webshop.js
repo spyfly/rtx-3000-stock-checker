@@ -51,7 +51,7 @@ async function main() {
                 const root = parse(response.data);
                 const productsBox = root.querySelector('.listing');
                 const products = productsBox.querySelectorAll('.product--info');
-                console.log(products.length + " Products found.")
+                console.log("Asus: " + products.length + " Products found.")
 
                 products.forEach(async product => {
                     const card = {}
@@ -113,9 +113,9 @@ async function main() {
             });
             const page = await (await ctx).newPage();
             const res = await page.goto(url);
-            console.log(await page.evaluate(() => navigator.userAgent));
+            //console.log(await page.evaluate(() => navigator.userAgent));
             var status = res.status()
-            console.log(status);
+            //console.log(status);
             if (status == 429) {
                 console.log("Rate limited!");
             } else if (status == 200) {
