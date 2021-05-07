@@ -112,17 +112,31 @@ async function checkCeconomy(storeId) {
             const json = JSON.parse(htmlJSON);
 
             var stockDetails = [];
+            var isProductCollection = false;
             if (json.data.productCollectionContent) {
                 stockDetails = json.data.productCollectionContent.items.visible;
+                isProductCollection = true;
             } else if (json.data.categoryV4) {
                 stockDetails = json.data.categoryV4.products;
             }
 
             for (const stockDetail of stockDetails) {
+                var product;
+                if (isProductCollection) {
+                    product = stockDetail.product;
+                } else {
+                    product = stockDetail.details;
+                    //Report that we found product! (Debugging)
+                    bot.sendMessage(debug_chat_id, "Found product on " + store.name + " via search: " + product.title + " | https://" + store.url + product.url);
+                }
                 productsChecked++;
 
                 //Product exists?
-                if (!stockDetail.product)
+                if (!product)
+                    continue;
+
+                //Skip 3rd Party Stores
+                if (!stockDetail.availability.delivery)
                     continue;
 
                 //Skip if out of stock
@@ -135,8 +149,8 @@ async function checkCeconomy(storeId) {
 
                 const id = stockDetail.productId;
                 const card = {
-                    title: stockDetail.product.title,
-                    href: "https://" + store.url + stockDetail.product.url,
+                    title: product.title,
+                    href: "https://" + store.url + product.url,
                     price: stockDetail.price.price
                 }
                 deals[id] = card;
