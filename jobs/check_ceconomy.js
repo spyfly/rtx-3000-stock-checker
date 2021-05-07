@@ -77,66 +77,71 @@ async function checkCeconomy(storeId) {
                     priceOverride: null
                 })
             }
-            const url = "https://" + store.url + "/api/v1/graphql?operationName=GetProductCollectionItems&variables=" + encodeURIComponent(JSON.stringify(itemObj)) + "&extensions=" + encodeURIComponent('{"pwa":{"salesLine":"' + store.graphQlName + '","country":"DE","language":"de"},"persistedQuery":{"version":1,"sha256Hash":"336da976d5643762fdc280b67c0479955c33794fd23e98734c651477dd8a2e4c"}}')
-            //await page.waitForTimeout(5000);
-            await apiPage.setExtraHTTPHeaders({ 'Content-Type': 'application/json', 'apollographql-client-name': 'pwa-client', 'apollographql-client-version': apolloGraphVersion, "x-flow-id": uuidv4() })
-            const response = await apiPage.goto(url);
-            console.log(store.name + ": " + response.status() + " | " + proxy);
-            if (response.status() == 403 || response.status() == 429) {
-                try {
-                    console.log("Waiting for browser to be checked!")
-                    const resp = await apiPage.waitForNavigation({ timeout: 10000 });
-                    if (resp.status() != 200) {
-                        console.log("Navigation failed!");
-                        throw "Navigation_failed";
+            var retry = 0;
+            while (retry < 10) {
+                const url = "https://" + store.url + "/api/v1/graphql?operationName=GetProductCollectionItems&variables=" + encodeURIComponent(JSON.stringify(itemObj)) + "&extensions=" + encodeURIComponent('{"pwa":{"salesLine":"' + store.graphQlName + '","country":"DE","language":"de"},"persistedQuery":{"version":1,"sha256Hash":"336da976d5643762fdc280b67c0479955c33794fd23e98734c651477dd8a2e4c"}}')
+                //await page.waitForTimeout(5000);
+                await apiPage.setExtraHTTPHeaders({ 'Content-Type': 'application/json', 'apollographql-client-name': 'pwa-client', 'apollographql-client-version': apolloGraphVersion, "x-flow-id": uuidv4() })
+                const response = await apiPage.goto(url);
+                console.log(store.name + ": " + response.status() + " | " + proxy);
+                if (response.status() == 403 || response.status() == 429) {
+                    try {
+                        console.log("Waiting for browser to be checked!")
+                        const resp = await apiPage.waitForNavigation({ timeout: 10000 });
+                        if (resp.status() != 200) {
+                            console.log("Navigation failed!");
+                            throw "Navigation_failed";
+                        }
+                    } catch (error) {
+                        //Load overview page for captcha solving
+                        await imposter.updateCookies(proxy, await context.cookies());
+                        await browser.close();
+                        var [browser, context, apiPage, proxy, productIds, apolloGraphVersion] = await getCollectionIds(store, true);
+
+                        //Set proper headers
+                        await apiPage.setExtraHTTPHeaders({ 'Content-Type': 'application/json', 'apollographql-client-name': 'pwa-client', 'apollographql-client-version': apolloGraphVersion, "x-flow-id": uuidv4() })
+
+                        // and now Reload page
+                        await apiPage.goto(url);
+                        //}
                     }
-                } catch (error) {
-                    //Load overview page for captcha solving
-                    await imposter.updateCookies(proxy, await context.cookies());
-                    await browser.close();
-                    var [browser, context, apiPage, proxy, productIds, apolloGraphVersion] = await getCollectionIds(store, true);
-
-                    //Set proper headers
-                    await apiPage.setExtraHTTPHeaders({ 'Content-Type': 'application/json', 'apollographql-client-name': 'pwa-client', 'apollographql-client-version': apolloGraphVersion, "x-flow-id": uuidv4() })
-
-                    // and now Reload page
-                    await apiPage.goto(url);
-                    //}
+                    await apiPage.screenshot({ path: 'debug_' + store.name + '_chunk.png' });
                 }
-                await apiPage.screenshot({ path: 'debug_' + store.name + '_chunk.png' });
-            }
 
-            const jsonEl = await apiPage.waitForSelector('pre', { timeout: 10000 });
-            const htmlJSON = await apiPage.evaluate(el => el.textContent, jsonEl)
-            const json = JSON.parse(htmlJSON);
-            if (!json.data) {
-                console.log(json.errors[0].message)
-            } else {
-                const stockDetails = json.data.getProductCollectionItems.visible;
-                for (const stockDetail of stockDetails) {
-                    productsChecked++;
+                const jsonEl = await apiPage.waitForSelector('pre', { timeout: 10000 });
+                const htmlJSON = await apiPage.evaluate(el => el.textContent, jsonEl)
+                const json = JSON.parse(htmlJSON);
+                if (!json.data) {
+                    console.log(json.errors[0].message + " | Retrying!")
+                    retry++;
+                } else {
+                    const stockDetails = json.data.getProductCollectionItems.visible;
+                    for (const stockDetail of stockDetails) {
+                        productsChecked++;
 
-                    //Product exists?
-                    if (!stockDetail.product)
-                        continue;
+                        //Product exists?
+                        if (!stockDetail.product)
+                            continue;
 
-                    //Skip if out of stock
-                    if (stockDetail.availability.delivery.availabilityType == 'NONE')
-                        continue;
+                        //Skip if out of stock
+                        if (stockDetail.availability.delivery.availabilityType == 'NONE')
+                            continue;
 
-                    //Check if quantity is available before notifying
-                    if (stockDetail.availability.delivery.quantity == 0)
-                        continue;
+                        //Check if quantity is available before notifying
+                        if (stockDetail.availability.delivery.quantity == 0)
+                            continue;
 
-                    const id = stockDetail.productId;
-                    const card = {
-                        title: stockDetail.product.title,
-                        href: "https://" + store.url + stockDetail.product.url,
-                        price: stockDetail.price.price
+                        const id = stockDetail.productId;
+                        const card = {
+                            title: stockDetail.product.title,
+                            href: "https://" + store.url + stockDetail.product.url,
+                            price: stockDetail.price.price
+                        }
+                        deals[id] = card;
+                        //console.log(stockDetail);
+                        console.log(card.title + " in stock for " + card.price + "€ at " + store.name)
                     }
-                    deals[id] = card;
-                    //console.log(stockDetail);
-                    console.log(card.title + " in stock for " + card.price + "€ at " + store.name)
+                    retry = 10;
                 }
             }
         }
