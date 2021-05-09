@@ -5,7 +5,7 @@ const { performance } = require('perf_hooks');
 
 const fs = require('fs').promises;
 
-const { chromium } = require('playwright-extra')
+const { firefox } = require('playwright-extra')
 const RecaptchaPlugin = require('@extra/recaptcha')
 const RecaptchaOptions = {
     visualFeedback: true, // colorize reCAPTCHAs (violet = detected, green = solved)
@@ -14,7 +14,7 @@ const RecaptchaOptions = {
         token: config.services['2captcha'].token, // REPLACE THIS WITH YOUR OWN 2CAPTCHA API KEY ⚡
     },
 }
-chromium.use(RecaptchaPlugin(RecaptchaOptions))
+firefox.use(RecaptchaPlugin(RecaptchaOptions))
 
 const deal_notify = require('../libs/deal_notify.js');
 
@@ -229,7 +229,7 @@ async function getCollectionIds(store, override = false) {
     }
 
     //const browser = await chromium.launchPersistentContext('/tmp/rtx-3000-stock-checker/' + proxy.replace(/\./g, "-").replace(/\:/g, "_"), browser_context);
-    const browser = await chromium.launch(browser_context);
+    const browser = await firefox.launch(browser_context);
     const context = await browser.newContext(browser_context);
     const page = await context.newPage();
 
