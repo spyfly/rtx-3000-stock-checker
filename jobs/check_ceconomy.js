@@ -72,7 +72,7 @@ async function checkCeconomy(storeId) {
                 "gridSize": "Small",
                 "storeId": null
             }
-            const url = "https://" + store.url + "/api/v1/graphql?operationName=GetProductCollectionContent&variables=" + encodeURIComponent(JSON.stringify(itemObj)) + "&extensions=" + encodeURIComponent('{"pwa":{"salesLine":"' + store.graphQlName + '","country":"DE","language":"de"},"persistedQuery":{"version":1,"sha256Hash":"2ca5f94736d90932c29fcbe78a79af7e316149da5947085416bc26f990a19896"}}')
+            const url = "https://" + store.url + "/api/v1/graphql?operationName=GetProductCollectionContent&variables=" + encodeURIComponent(JSON.stringify(itemObj)) + "&extensions=" + encodeURIComponent('{"pwa":{"salesLine":"' + store.graphQlName + '","country":"DE","language":"de"},"persistedQuery":{"version":1,"sha256Hash":"d43ff94a1d080389b881aa250925c3ce694270c9e8fcc3a728a91489a3a8db6a"}}')
             urls.push(url);
         }
 
@@ -110,7 +110,6 @@ async function checkCeconomy(storeId) {
             const jsonEl = await apiPage.waitForSelector('pre', { timeout: 10000 });
             const htmlJSON = await apiPage.evaluate(el => el.textContent, jsonEl)
             const json = JSON.parse(htmlJSON);
-
             var stockDetails = [];
             var isProductCollection = false;
             if (json.data.productCollectionContent) {
