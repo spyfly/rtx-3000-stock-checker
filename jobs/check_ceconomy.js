@@ -137,7 +137,8 @@ async function checkCeconomy(storeId) {
                 } else {
                     product = stockDetail.details;
                     //Report that we found product! (Debugging)
-                    bot.sendMessage(debug_chat_id, "Found product on " + store.name + " via search: " + product.title + " | https://" + store.url + product.url);
+                    fs.writeFile('debug/' + store.name + "_" + stockDetail.productId + ".json", JSON.stringify(stockDetail));
+                    //bot.sendMessage(debug_chat_id, "Found product on " + store.name + " via search: " + product.title + " | https://" + store.url + product.url);
                 }
                 productsChecked++;
 
