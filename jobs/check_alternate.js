@@ -99,7 +99,7 @@ async function main() {
                     const html = parse(res.data);
                     const card = {}
                     card.title = html.querySelector("title").text.split(",")[0]
-                    const in_stock = (html.querySelectorAll("#add-to-cart-form .details-cart-button:not([disabled])").length == 1);
+                    const in_stock = (html.querySelectorAll("#add-to-cart-form .details-cart-button:not([disabled])").length >= 1);
                     if (in_stock) {
                         const html = parse(res.data);
                         card.href = cardUrl;
