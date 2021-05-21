@@ -64,6 +64,109 @@ async function checkCeconomy(storeId) {
         var productsChecked = 0;
         var urls = [];
 
+        var productIds = [
+            "2689453",
+            "2691444",
+            "2712013",
+            "2728199",
+            "2728200",
+            "2681871",
+            "2719146",
+            "2719167",
+            "2719315",
+            "2719148",
+            "2718593",
+            "2718594",
+            "2728198",
+            "2721941",
+            "2703466",
+            "2727942",
+            "2712011",
+            "2688473",
+            "2689451",
+            "2683942",
+            "2684238",
+            "2683229",
+            "2683227",
+            "2683243",
+            "2681869",
+            "2681859",
+            "2696164",
+            "2695943",
+            "2695941",
+            "2694898",
+            "2694896",
+            "2694894",
+            "2691439",
+            "2691247",
+            "2691246",
+            "2691244",
+            "2702989",
+            "2702988",
+            "2702990",
+            "2701237",
+            "2701234",
+            "2701240",
+            "2719459",
+            "2719456",
+            "2719457",
+            "2719314",
+            "2719460",
+            "2719317",
+            "2719161",
+            "2722386",
+            "2704390",
+            "2704389",
+            "2704387",
+            "2704388",
+            "2719160",
+            "2719152",
+            "2719165",
+            "2688497",
+            "2691245",
+            "2709853",
+            "2719163",
+            "2719159",
+            "2719166",
+            "2691243",
+            "2701238",
+            "2696163",
+            "2695671",
+            "2684241",
+            "2691443",
+            "2683937",
+            "2691438",
+            "2681861",
+            "2704437",
+            "2711769",
+            "2703530",
+            "2704436",
+            "2703526",
+            "2703467",
+            "2698339",
+            "2712787",
+            "2709470",
+            "2712909",
+            "2712010",
+            "2712012",
+            "2718003",
+            "2714233",
+            "2701596",
+            "2715323",
+            "2702991",
+            "2702992",
+            "2701239",
+            "2719151",
+            "2691365",
+            "2712784",
+            "2732518",
+            "2719147",
+            "2728201",
+            "2712800"
+        ];
+
+        /*
+        Currently broken
         for (const collectionId of collectionIds) {
             const itemObj = {
                 "id": collectionId,
@@ -73,6 +176,27 @@ async function checkCeconomy(storeId) {
                 "storeId": null
             }
             const url = "https://" + store.url + "/api/v1/graphql?operationName=GetProductCollectionContent&variables=" + encodeURIComponent(JSON.stringify(itemObj)) + "&extensions=" + encodeURIComponent('{"pwa":{"salesLine":"' + store.graphQlName + '","country":"DE","language":"de"},"persistedQuery":{"version":1,"sha256Hash":"d43ff94a1d080389b881aa250925c3ce694270c9e8fcc3a728a91489a3a8db6a"}}')
+            urls.push(url);
+        }
+        */
+
+        var i, j, productsChunk, chunk = 30;
+
+        for (i = 0, j = productIds.length; i < j; i += chunk) {
+            productsChunk = productIds.slice(i, i + chunk);
+
+            const itemObj = {
+                items: []
+            };
+
+            for (const productId of productsChunk) {
+                itemObj.items.push({
+                    id: productId,
+                    type: "Product",
+                    priceOverride: null
+                })
+            }
+            const url = "https://" + store.url + "/api/v1/graphql?operationName=GetProductCollectionItems&variables=" + encodeURIComponent(JSON.stringify(itemObj)) + "&extensions=" + encodeURIComponent('{"pwa":{"salesLine":"' + store.graphQlName + '","country":"DE","language":"de"},"persistedQuery":{"version":1,"sha256Hash":"336da976d5643762fdc280b67c0479955c33794fd23e98734c651477dd8a2e4c"}}')
             urls.push(url);
         }
 
@@ -122,11 +246,15 @@ async function checkCeconomy(storeId) {
             const htmlJSON = await apiPage.evaluate(el => el.textContent, jsonEl)
             const json = JSON.parse(htmlJSON);
             var stockDetails = [];
-            var isProductCollection = false;
+            var isProductCollection = true;
             if (json.data.productCollectionContent) {
+                //New Collections (now broken)
                 stockDetails = json.data.productCollectionContent.items.visible;
-                isProductCollection = true;
+            } else if (json.data.getProductCollectionItems) {
+                //Legacy Collections
+                stockDetails = json.data.getProductCollectionItems.visible;
             } else if (json.data.categoryV4) {
+                isProductCollection = false;
                 stockDetails = json.data.categoryV4.products;
             }
 
