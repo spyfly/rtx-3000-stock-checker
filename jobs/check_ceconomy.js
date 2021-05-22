@@ -92,8 +92,10 @@ async function checkCeconomy(storeId) {
             "2681869",
             "2681859",
             "2696164",
+            "2703443",
             "2695943",
             "2695941",
+            "2695942",
             "2694898",
             "2694896",
             "2694894",
@@ -127,6 +129,8 @@ async function checkCeconomy(storeId) {
             "2709853",
             "2719163",
             "2719159",
+            "2712924",
+            "2721985",
             "2719166",
             "2691243",
             "2701238",
@@ -203,98 +207,108 @@ async function checkCeconomy(storeId) {
         urls.push("https://" + store.url + "/api/v1/graphql?anti-cache=" + new Date().getTime() + "&operationName=CategoryV4&variables=%7B%22hasMarketplace%22%3Atrue%2C%22filters%22%3A%5B%22graphicsCard%3ANVIDIA%20GeForce%20RTX%203060%20OR%20NVIDIA%20GeForce%20RTX%203060%20TI%20OR%20NVIDIA%20GeForce%20RTX%203070%20OR%20NVIDIA%20GeForce%20RTX%203080%20OR%20NVIDIA%20GeForce%20RTX%203090%22%2C%22graphicsBrand%3ANVIDIA%22%5D%2C%22storeId%22%3A%22480%22%2C%22wcsId%22%3A%22" + store.gpuCategoryId + "%22%2C%22page%22%3A1%2C%22experiment%22%3A%22mp%22%7D&extensions=%7B%22pwa%22%3A%7B%22salesLine%22%3A%22" + store.graphQlName + "%22%2C%22country%22%3A%22DE%22%2C%22language%22%3A%22de%22%2C%22contentful%22%3Atrue%7D%2C%22persistedQuery%22%3A%7B%22version%22%3A1%2C%22sha256Hash%22%3A%22059e0d217e1245a9221360b7f9c4fe3bc8de9b9e0469931b454d743cc939040c%22%7D%7D");
 
         for (url of urls) {
-            //await page.waitForTimeout(5000);
-            await apiPage.setExtraHTTPHeaders({
-                'Content-Type': 'application/json',
-                'apollographql-client-name': 'pwa-client',
-                'apollographql-client-version': apolloGraphVersion,
-                "x-cacheable": "false",
-                "X-MMS-Language": "de",
-                "X-MMS-Country": "DE",
-                "X-MMS-Salesline": store.graphQlName,
-                "x-flow-id": uuidv4(),
-                "Pragma": "no-cache",
-                "Cache-Control": "no-cache",
-            })
-            const response = await apiPage.goto(url);
-            console.log(store.name + ": " + response.status() + " | " + proxy);
-            if (response.status() == 403 || response.status() == 429) {
-                try {
-                    console.log("Waiting for browser to be checked!")
-                    const resp = await apiPage.waitForNavigation({ timeout: 10000 });
-                    if (resp.status() != 200) {
-                        console.log("Navigation failed!");
-                        throw "Navigation_failed";
+            var retry = 0;
+            while (retry < 4) {
+
+                //await page.waitForTimeout(5000);
+                await apiPage.setExtraHTTPHeaders({
+                    'Content-Type': 'application/json',
+                    'apollographql-client-name': 'pwa-client',
+                    'apollographql-client-version': apolloGraphVersion,
+                    "x-cacheable": "false",
+                    "X-MMS-Language": "de",
+                    "X-MMS-Country": "DE",
+                    "X-MMS-Salesline": store.graphQlName,
+                    "x-flow-id": uuidv4(),
+                    "Pragma": "no-cache",
+                    "Cache-Control": "no-cache",
+                })
+                const response = await apiPage.goto(url);
+                console.log(store.name + ": " + response.status() + " | " + proxy);
+                if (response.status() == 403 || response.status() == 429) {
+                    try {
+                        console.log("Waiting for browser to be checked!")
+                        const resp = await apiPage.waitForNavigation({ timeout: 10000 });
+                        if (resp.status() != 200) {
+                            console.log("Navigation failed!");
+                            throw "Navigation_failed";
+                        }
+                    } catch (error) {
+                        //Load overview page for captcha solving
+                        await imposter.updateCookies(proxy, await context.cookies());
+                        await browser.close();
+                        var [browser, context, apiPage, proxy, collectionIds, apolloGraphVersion] = await getCollectionIds(store, true);
+
+                        //Set proper headers
+                        await apiPage.setExtraHTTPHeaders({ 'Content-Type': 'application/json', 'apollographql-client-name': 'pwa-client', 'apollographql-client-version': apolloGraphVersion, "x-flow-id": uuidv4() })
+
+                        // and now Reload page
+                        await apiPage.goto(url);
+                        //}
                     }
-                } catch (error) {
-                    //Load overview page for captcha solving
-                    await imposter.updateCookies(proxy, await context.cookies());
-                    await browser.close();
-                    var [browser, context, apiPage, proxy, collectionIds, apolloGraphVersion] = await getCollectionIds(store, true);
-
-                    //Set proper headers
-                    await apiPage.setExtraHTTPHeaders({ 'Content-Type': 'application/json', 'apollographql-client-name': 'pwa-client', 'apollographql-client-version': apolloGraphVersion, "x-flow-id": uuidv4() })
-
-                    // and now Reload page
-                    await apiPage.goto(url);
-                    //}
+                    await apiPage.screenshot({ path: 'debug_' + store.name + '_chunk.png' });
                 }
-                await apiPage.screenshot({ path: 'debug_' + store.name + '_chunk.png' });
-            }
 
-            const jsonEl = await apiPage.waitForSelector('pre', { timeout: 10000 });
-            const htmlJSON = await apiPage.evaluate(el => el.textContent, jsonEl)
-            const json = JSON.parse(htmlJSON);
-            var stockDetails = [];
-            var isProductCollection = true;
-            if (json.data.productCollectionContent) {
-                //New Collections (now broken)
-                stockDetails = json.data.productCollectionContent.items.visible;
-            } else if (json.data.getProductCollectionItems) {
-                //Legacy Collections
-                stockDetails = json.data.getProductCollectionItems.visible;
-            } else if (json.data.categoryV4) {
-                isProductCollection = false;
-                stockDetails = json.data.categoryV4.products;
-            }
-
-            for (const stockDetail of stockDetails) {
-                var product;
-                if (isProductCollection) {
-                    product = stockDetail.product;
+                const jsonEl = await apiPage.waitForSelector('pre', { timeout: 10000 });
+                const htmlJSON = await apiPage.evaluate(el => el.textContent, jsonEl)
+                const json = JSON.parse(htmlJSON);
+                var stockDetails = [];
+                var isProductCollection = true;
+                if (json.errors) {
+                    //console.log(json.errors);
+                    retry++;
                 } else {
-                    product = stockDetail.details;
-                    //Report that we found product! (Debugging)
-                    fs.writeFile('debug/' + store.name + "_" + stockDetail.productId + ".json", JSON.stringify(stockDetail));
-                    //bot.sendMessage(debug_chat_id, "Found product on " + store.name + " via search: " + product.title + " | https://" + store.url + product.url);
+                    retry = 10;
+                    if (json.data.productCollectionContent) {
+                        //New Collections (now broken)
+                        stockDetails = json.data.productCollectionContent.items.visible;
+                    } else if (json.data.getProductCollectionItems) {
+                        //Legacy Collections
+                        stockDetails = json.data.getProductCollectionItems.visible;
+                    } else if (json.data.categoryV4) {
+                        isProductCollection = false;
+                        stockDetails = json.data.categoryV4.products;
+                    }
+
+                    for (const stockDetail of stockDetails) {
+                        var product;
+                        if (isProductCollection) {
+                            product = stockDetail.product;
+                        } else {
+                            product = stockDetail.details;
+                            //Report that we found product! (Debugging)
+                            fs.writeFile('debug/' + store.name + "_" + stockDetail.productId + ".json", JSON.stringify(stockDetail));
+                            //bot.sendMessage(debug_chat_id, "Found product on " + store.name + " via search: " + product.title + " | https://" + store.url + product.url);
+                        }
+                        productsChecked++;
+
+                        //Product exists?
+                        if (!product)
+                            continue;
+
+                        //Skip 3rd Party Stores
+                        if (!stockDetail.availability.delivery)
+                            continue;
+
+                        //Skip if out of stock
+                        if (stockDetail.availability.delivery.availabilityType == 'NONE')
+                            continue;
+
+                        //Skip if Warehouse Quantity is 0
+                        if (stockDetail.availability.delivery.availabilityType == "IN_WAREHOUSE" && stockDetail.availability.delivery.quantity == 0)
+                            continue;
+
+                        const id = stockDetail.productId;
+                        const card = {
+                            title: product.title,
+                            href: "https://" + store.url + product.url,
+                            price: stockDetail.price.price
+                        }
+                        deals[id] = card;
+                        //console.log(stockDetail);
+                        console.log(card.title + " in stock for " + card.price + "€ at " + store.name)
+                    }
                 }
-                productsChecked++;
-
-                //Product exists?
-                if (!product)
-                    continue;
-
-                //Skip 3rd Party Stores
-                if (!stockDetail.availability.delivery)
-                    continue;
-
-                //Skip if out of stock
-                if (stockDetail.availability.delivery.availabilityType == 'NONE')
-                    continue;
-
-                //Skip if Warehouse Quantity is 0
-                if (stockDetail.availability.delivery.availabilityType == "IN_WAREHOUSE" && stockDetail.availability.delivery.quantity == 0)
-                    continue;
-
-                const id = stockDetail.productId;
-                const card = {
-                    title: product.title,
-                    href: "https://" + store.url + product.url,
-                    price: stockDetail.price.price
-                }
-                deals[id] = card;
-                //console.log(stockDetail);
-                console.log(card.title + " in stock for " + card.price + "€ at " + store.name)
             }
         }
 

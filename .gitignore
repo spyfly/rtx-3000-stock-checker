@@ -1,4 +1,5 @@
 config.json
 debug_*
+debug/
 node_modules
 status
