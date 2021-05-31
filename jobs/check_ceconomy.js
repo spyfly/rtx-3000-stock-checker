@@ -5,8 +5,9 @@ const { performance } = require('perf_hooks');
 
 const fs = require('fs').promises;
 
-const { firefox } = require('playwright-extra')
-const RecaptchaPlugin = require('@extra/recaptcha')
+const puppeteer = require('puppeteer-extra')
+const RecaptchaPlugin = require('puppeteer-extra-plugin-recaptcha')
+const StealthPlugin = require('puppeteer-extra-plugin-stealth');
 const RecaptchaOptions = {
     visualFeedback: true, // colorize reCAPTCHAs (violet = detected, green = solved)
     provider: {
@@ -14,7 +15,8 @@ const RecaptchaOptions = {
         token: config.services['2captcha'].token, // REPLACE THIS WITH YOUR OWN 2CAPTCHA API KEY ⚡
     },
 }
-firefox.use(RecaptchaPlugin(RecaptchaOptions))
+puppeteer.use(StealthPlugin());
+puppeteer.use(RecaptchaPlugin(RecaptchaOptions))
 
 const deal_notify = require('../libs/deal_notify.js');
 
@@ -184,6 +186,7 @@ async function checkCeconomy(storeId) {
         }
         */
 
+        /*
         var i, j, productsChunk, chunk = 30;
 
         for (i = 0, j = productIds.length; i < j; i += chunk) {
@@ -204,11 +207,37 @@ async function checkCeconomy(storeId) {
             urls.push(url);
         }
 
+        */
         urls.push("https://" + store.url + "/api/v1/graphql?anti-cache=" + new Date().getTime() + "&operationName=CategoryV4&variables=%7B%22hasMarketplace%22%3Atrue%2C%22filters%22%3A%5B%22graphicsCard%3ANVIDIA%20GeForce%20RTX%203060%20OR%20NVIDIA%20GeForce%20RTX%203060%20TI%20OR%20NVIDIA%20GeForce%20RTX%203070%20OR%20NVIDIA%20GeForce%20RTX%203080%20OR%20NVIDIA%20GeForce%20RTX%203090%22%2C%22graphicsBrand%3ANVIDIA%22%5D%2C%22storeId%22%3A%22480%22%2C%22wcsId%22%3A%22" + store.gpuCategoryId + "%22%2C%22page%22%3A1%2C%22experiment%22%3A%22mp%22%7D&extensions=%7B%22pwa%22%3A%7B%22salesLine%22%3A%22" + store.graphQlName + "%22%2C%22country%22%3A%22DE%22%2C%22language%22%3A%22de%22%2C%22contentful%22%3Atrue%7D%2C%22persistedQuery%22%3A%7B%22version%22%3A1%2C%22sha256Hash%22%3A%22059e0d217e1245a9221360b7f9c4fe3bc8de9b9e0469931b454d743cc939040c%22%7D%7D");
+
+        for (var i = 0; i < 5; i++) {
+            var vars = {
+                hasMarketplace: true,
+                shouldFetchBasket: true,
+                limit: 24,
+            }
+            if (i > 0) {
+                vars.offset = 24 * i;
+            }
+            const extensions = {
+                pwa: {
+                    salesLine: store.graphQlName,
+                    country: "DE",
+                    language: "de"
+                },
+                persistedQuery: {
+                    version: 1,
+                    sha256Hash: "34f689a65435266a00785158604c61a7ad262c5a5bac523dd1af68c406f72248"
+                }
+            };
+            urls.push("https://" + store.url + "/api/v1/graphql?anti-cache=" + new Date().getTime() + "&operationName=WishlistItems&variables=" + JSON.stringify(vars) + "&extensions=" + JSON.stringify(extensions))
+        }
+
+        var wishlistItemIds = [];
 
         for (url of urls) {
             var retry = 0;
-            while (retry < 4) {
+            while (retry < 2) {
 
                 //await page.waitForTimeout(5000);
                 await apiPage.setExtraHTTPHeaders({
@@ -235,7 +264,7 @@ async function checkCeconomy(storeId) {
                         }
                     } catch (error) {
                         //Load overview page for captcha solving
-                        await imposter.updateCookies(proxy, await context.cookies());
+                        //await imposter.updateCookies(proxy, await context.cookies());
                         await browser.close();
                         var [browser, context, apiPage, proxy, collectionIds, apolloGraphVersion] = await getCollectionIds(store, true);
 
@@ -254,9 +283,33 @@ async function checkCeconomy(storeId) {
                 const json = JSON.parse(htmlJSON);
                 var stockDetails = [];
                 var isProductCollection = true;
-                if (json.errors) {
-                    //console.log(json.errors);
+                var isWishlist = false;
+                if (json.errors && json.errors[0].extensions.exception.status != 400) {
+                    if (json.errors[0].extensions.status == 401) {
+                        console.log("Wishlist requires login!");
+                        const resp = await apiPage.evaluate(async (store, uuid, apolloGraphVersion, config) => {
+                            return await fetch("https://" + location.host + "/api/v1/graphql", {
+                                "credentials": "include",
+                                "headers": {
+                                    "Content-Type": "application/json",
+                                    "apollographql-client-name": "pwa-client",
+                                    "apollographql-client-version": apolloGraphVersion,
+                                    "x-operation": "LoginProfileUser",
+                                    "x-flow-id": uuid,
+                                    "x-cacheable": "false",
+                                    "X-MMS-Language": "de",
+                                    "X-MMS-Country": "DE",
+                                    "X-MMS-Salesline": store.graphQlName
+                                },
+                                "body": "{\"operationName\":\"LoginProfileUser\",\"variables\":{\"email\":\"" + config.ceconomy.username + "\",\"password\":\"" + config.ceconomy.password + "\"},\"extensions\":{\"pwa\":{\"salesLine\":\"" + store.graphQlName + "\",\"country\":\"DE\",\"language\":\"de\"},\"persistedQuery\":{\"version\":1,\"sha256Hash\":\"48888a2943b5b790b95fce729554b6f0818eda790466ca59b074156da0723746\"}}}",
+                                "method": "POST",
+                                "mode": "cors"
+                            });
+                        }, store, uuidv4(), apolloGraphVersion, config);
+                        console.log(resp);
+                    }
                     retry++;
+                    console.log(url)
                 } else {
                     retry = 10;
                     if (json.data.productCollectionContent) {
@@ -268,6 +321,10 @@ async function checkCeconomy(storeId) {
                     } else if (json.data.categoryV4) {
                         isProductCollection = false;
                         stockDetails = json.data.categoryV4.products;
+                    } else if (json.data.wishlistItems) {
+                        isWishlist = true;
+                        //console.log("Is wishlist! | " + store.name)
+                        stockDetails = json.data.wishlistItems.items
                     }
 
                     for (const stockDetail of stockDetails) {
@@ -281,6 +338,33 @@ async function checkCeconomy(storeId) {
                             //bot.sendMessage(debug_chat_id, "Found product on " + store.name + " via search: " + product.title + " | https://" + store.url + product.url);
                         }
                         productsChecked++;
+
+                        if (isWishlist && product == null) {
+                            console.log("Borked Wishlist Item found: " + stockDetail.id + " at " + store.name);
+                            // Delete borked wishlist items
+                            await apiPage.evaluate(async (store, uuid, apolloGraphVersion, stockDetail) => {
+                                await fetch("https://" + location.host + "/api/v1/graphql", {
+                                    "credentials": "include",
+                                    "headers": {
+                                        "apollographql-client-name": "pwa-client",
+                                        "apollographql-client-version": apolloGraphVersion,
+                                        "x-operation": "DeleteWishlistItem",
+                                        "x-flow-id": uuid,
+                                        "x-cacheable": "false",
+                                        "X-MMS-Language": "de",
+                                        "X-MMS-Country": "DE",
+                                        "X-MMS-Salesline": store.graphQlName
+                                    },
+                                    "body": "{\"operationName\":\"DeleteWishlistItem\",\"variables\":{\"id\":\"" + stockDetail.id + "\"},\"extensions\":{\"pwa\":{\"salesLine\":\"" + store.graphQlName + "\",\"country\":\"DE\",\"language\":\"de\"},\"persistedQuery\":{\"version\":1,\"sha256Hash\":\"52c774a9ca8f9c3a0d4e9de33f37a2dadf8b65b2b5b5707484ee6aa378ba5214\"}}}",
+                                    "method": "POST",
+                                    "mode": "cors"
+                                });
+                            }, store, uuidv4(), apolloGraphVersion, stockDetail)
+                            continue;
+                        }
+
+                        if (isWishlist)
+                            wishlistItemIds.push(product.id);
 
                         //Product exists?
                         if (!product)
@@ -298,13 +382,17 @@ async function checkCeconomy(storeId) {
                         if (stockDetail.availability.delivery.availabilityType == "IN_WAREHOUSE" && stockDetail.availability.delivery.quantity == 0)
                             continue;
 
-                        const id = stockDetail.productId;
+                        var id = stockDetail.productId;
+                        if (isWishlist)
+                            id = product.id
+
                         const card = {
                             title: product.title,
                             href: "https://" + store.url + product.url,
                             price: stockDetail.price.price
                         }
                         deals[id] = card;
+
                         //console.log(stockDetail);
                         console.log(card.title + " in stock for " + card.price + "€ at " + store.name)
                     }
@@ -314,6 +402,38 @@ async function checkCeconomy(storeId) {
 
         //Processing Notifications
         await deal_notify(deals, store.name + '_webshop_deals', 'ceconomy');
+
+        var missingItems = [];
+        for (const productId of productIds) {
+            if (!wishlistItemIds.includes(productId)) {
+                missingItems.push(productId);
+            }
+        }
+
+        for (i = 0; (i < missingItems.length && i < 5); i++) {
+
+            const resp = await apiPage.evaluate(async (store, uuid, productId, apolloGraphVersion) => {
+                return await (await fetch("https://" + location.host + "/api/v1/graphql", {
+                    "credentials": "include",
+                    "headers": {
+                        "apollographql-client-name": "pwa-client",
+                        "apollographql-client-version": apolloGraphVersion,
+                        "x-operation": "AddWishlistItem",
+                        "x-flow-id": uuid,
+                        "x-cacheable": "false",
+                        "X-MMS-Language": "de",
+                        "X-MMS-Country": "DE",
+                        "X-MMS-Salesline": store.graphQlName
+                    },
+                    "body": "{\"operationName\":\"AddWishlistItem\",\"variables\":{\"hasMarketplace\":false,\"productId\":\"" + productId + "\"},\"extensions\":{\"pwa\":{\"salesLine\":\"" + store.graphQlName + "\",\"country\":\"DE\",\"language\":\"de\"},\"persistedQuery\":{\"version\":1,\"sha256Hash\":\"be1b866912be48a06e7b548dcf0c0084df6a28cc00b0512ef9d3a24b1ae59cdf\"}}}",
+                    "method": "POST",
+                    "mode": "cors"
+                })).json();
+            }, store, uuidv4(), missingItems[i], apolloGraphVersion)
+            console.log(resp);
+        }
+
+        console.log(missingItems.length + " Items missing from Wishlist at " + store.name)
 
         console.log(productsChecked + " " + store.name + ` Deals processed in ${((performance.now() - time) / 1000).toFixed(2)} s`)
     } catch (error) {
@@ -331,7 +451,7 @@ async function checkCeconomy(storeId) {
         }
     }
 
-    await imposter.updateCookies(proxy, await context.cookies());
+    //await imposter.updateCookies(proxy, await context.cookies());
     await browser.close();
 }
 
@@ -368,9 +488,9 @@ async function getCollectionIds(store, override = false) {
 
         if (proxy != undefined) {
             const browserDetails = await imposter.getBrowserDetails(proxy);
-            browser_context.storageState = {
-                cookies: browserDetails.cookies
-            };
+            //browser_context.storageState = {
+            //    cookies: browserDetails.cookies
+            //};
             browser_context.proxy = {
                 server: proxy
             };
@@ -383,9 +503,17 @@ async function getCollectionIds(store, override = false) {
     }
 
     //const browser = await chromium.launchPersistentContext('/tmp/rtx-3000-stock-checker/' + proxy.replace(/\./g, "-").replace(/\:/g, "_"), browser_context);
-    const browser = await firefox.launch(browser_context);
-    const context = await browser.newContext(browser_context);
-    const page = await context.newPage();
+    //const browser = await firefox.launch(browser_context);
+    //const context = await browser.newContext(browser_context);
+    const browser = await puppeteer.launch({
+        userDataDir: '/tmp/rtx-3000-stock-checker/' + proxy.replace(/\./g, "-").replace(/\:/g, "_"),
+        //headless: false,
+        args: [
+            '--proxy-server=' + browser_context.proxy.server,
+        ],
+    });
+    const context = browser;
+    const page = await browser.newPage();
 
     const key = store.name + '_webshop_collectionids';
     var collectionIdsLastUpdate = 0
@@ -409,7 +537,7 @@ async function getCollectionIds(store, override = false) {
     }
 
     //Fetching collectionIds
-    const storeUrl = 'https://' + store.url + '/de/campaign/grafikkarten-nvidia-geforce-rtx-30';
+    const storeUrl = 'https://' + store.url;
 
     let time = performance.now();
     await page.goto(storeUrl, { waitUntil: 'load', timeout: 30000 });
@@ -480,7 +608,7 @@ async function getCollectionIds(store, override = false) {
     }
 
 
-    apolloGraphVersion = await (await page.waitForSelector('[name="version"]', { state: 'attached' })).getAttribute("content");
+    apolloGraphVersion = await (await (await page.waitForSelector('[name="version"]', { state: 'attached' })).getProperty("content")).jsonValue();
 
     console.log("ApolloGraphVersion: " + apolloGraphVersion)
     console.log(collectionIds)
