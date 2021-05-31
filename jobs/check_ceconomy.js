@@ -410,7 +410,7 @@ async function checkCeconomy(storeId) {
             }
         }
 
-        for (i = 0; (i < missingItems.length && i < 10); i++) {
+        for (i = 0; (i < missingItems.length && i < 5); i++) {
 
             const resp = await apiPage.evaluate(async (store, uuid, productId, apolloGraphVersion) => {
                 return await (await fetch("https://" + location.host + "/api/v1/graphql", {
