@@ -22,9 +22,15 @@ function getRandom(min, max) {
     return Math.floor(Math.random() * (max - min) + min);
 }
 
+const startPrice = getRandom(50, 250);
+const maxPrice = getRandom(3000, 3500);
+
+function getWebshopUrl(page = 1) {
+    return 'https://www.alternate.de/listing_ajax.xhtml?t=21466&listing=1&filter_-2=true&filter_2203=NVIDIA+GeForce+RTX+3080&filter_2203=NVIDIA+GeForce+RTX+3070&filter_2203=NVIDIA+GeForce+RTX+3060+Ti&filter_2203=NVIDIA+GeForce+RTX+3060&filter_2203=NVIDIA+GeForce+RTX+3090&s=price_asc&page=' + page + '&pr1=' + startPrice + '&pr2=' + maxPrice;
+}
+
 async function main() {
     var cardUrls = [];
-    const alternateWebshopUrl = 'https://www.alternate.de/listing_ajax.xhtml?t=21466&listing=1&filter_-2=true&filter_2203=NVIDIA+GeForce+RTX+3080&filter_2203=NVIDIA+GeForce+RTX+3070&filter_2203=NVIDIA+GeForce+RTX+3060+Ti&filter_2203=NVIDIA+GeForce+RTX+3060&filter_2203=NVIDIA+GeForce+RTX+3090&s=price_asc&page=1&pr1=' + getRandom(50, 250) + '&pr2=' + getRandom(2000, 2500);
 
     var axios_config = {
         headers: { 'User-Agent': config.browser.user_agent }
@@ -44,12 +50,14 @@ async function main() {
         var deals = {};
         var i = 1;
         var response;
+        var failure = 0;
 
         var productsCount = 24;
-        while (productsCount == 24) {
+        while (productsCount == 24 && failure < 5) {
             try {
-                response = await axios.get(alternateWebshopUrl + i++, axios_config);
+                response = await axios.get(getWebshopUrl(i++), axios_config);
             } catch (err) {
+                failure++;
                 console.log("Failed fetching Alternate Product Overview: " + err.message)
             }
 
