@@ -403,15 +403,15 @@ async function checkCeconomy(storeId) {
         //Processing Notifications
         await deal_notify(deals, store.name + '_webshop_deals', 'ceconomy');
 
-        var missingItems = 0;
-        console.log(missingItems)
+        var missingItems = [];
         for (const productId of productIds) {
             if (!wishlistItemIds.includes(productId)) {
-                missingItems++;
+                missingItems.push(productId);
             }
         }
 
-        for (i = 0; (i < missingItems && i < 1); i++) {
+        for (i = 0; (i < missingItems.length && i < 10); i++) {
+
             const resp = await apiPage.evaluate(async (store, uuid, productId, apolloGraphVersion) => {
                 return await (await fetch("https://" + location.host + "/api/v1/graphql", {
                     "credentials": "include",
@@ -429,11 +429,11 @@ async function checkCeconomy(storeId) {
                     "method": "POST",
                     "mode": "cors"
                 })).json();
-            }, store, uuidv4(), wishlistItemIds[i], apolloGraphVersion)
-            console.log(resp.data.addWishlistItem);
+            }, store, uuidv4(), missingItems[i], apolloGraphVersion)
+            console.log(resp);
         }
 
-        console.log(missingItems + " Items missing from Wishlist at " + store.name)
+        console.log(missingItems.length + " Items missing from Wishlist at " + store.name)
 
         console.log(productsChecked + " " + store.name + ` Deals processed in ${((performance.now() - time) / 1000).toFixed(2)} s`)
     } catch (error) {
