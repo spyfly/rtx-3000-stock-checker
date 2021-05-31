@@ -214,10 +214,10 @@ async function checkCeconomy(storeId) {
             var vars = {
                 hasMarketplace: true,
                 shouldFetchBasket: true,
-                limit: 12,
+                limit: 24,
             }
             if (i > 0) {
-                vars.offset = 12 * i;
+                vars.offset = 24 * i;
             }
             const extensions = {
                 pwa: {
@@ -284,7 +284,7 @@ async function checkCeconomy(storeId) {
                 var stockDetails = [];
                 var isProductCollection = true;
                 var isWishlist = false;
-                if (json.errors) {
+                if (json.errors && json.errors[0].extensions.exception.status != 400) {
                     if (json.errors[0].extensions.status == 401) {
                         console.log("Wishlist requires login!");
                         const resp = await apiPage.evaluate(async (store, uuid, apolloGraphVersion, config) => {
@@ -323,7 +323,7 @@ async function checkCeconomy(storeId) {
                         stockDetails = json.data.categoryV4.products;
                     } else if (json.data.wishlistItems) {
                         isWishlist = true;
-                        console.log("Is wishlist! | " + store.name)
+                        //console.log("Is wishlist! | " + store.name)
                         stockDetails = json.data.wishlistItems.items
                     }
 
@@ -338,6 +338,30 @@ async function checkCeconomy(storeId) {
                             //bot.sendMessage(debug_chat_id, "Found product on " + store.name + " via search: " + product.title + " | https://" + store.url + product.url);
                         }
                         productsChecked++;
+
+                        if (isWishlist && product == null) {
+                            console.log("Borked Wishlist Item found: " + stockDetail.id + " at " + store.name);
+                            // Delete borked wishlist items
+                            await apiPage.evaluate(async (store, uuid, apolloGraphVersion, stockDetail) => {
+                                await fetch("https://" + location.host + "/api/v1/graphql", {
+                                    "credentials": "include",
+                                    "headers": {
+                                        "apollographql-client-name": "pwa-client",
+                                        "apollographql-client-version": apolloGraphVersion,
+                                        "x-operation": "DeleteWishlistItem",
+                                        "x-flow-id": uuid,
+                                        "x-cacheable": "false",
+                                        "X-MMS-Language": "de",
+                                        "X-MMS-Country": "DE",
+                                        "X-MMS-Salesline": store.graphQlName
+                                    },
+                                    "body": "{\"operationName\":\"DeleteWishlistItem\",\"variables\":{\"id\":\"" + stockDetail.id + "\"},\"extensions\":{\"pwa\":{\"salesLine\":\"" + store.graphQlName + "\",\"country\":\"DE\",\"language\":\"de\"},\"persistedQuery\":{\"version\":1,\"sha256Hash\":\"52c774a9ca8f9c3a0d4e9de33f37a2dadf8b65b2b5b5707484ee6aa378ba5214\"}}}",
+                                    "method": "POST",
+                                    "mode": "cors"
+                                });
+                            }, store, uuidv4(), apolloGraphVersion, stockDetail)
+                            continue;
+                        }
 
                         if (isWishlist)
                             wishlistItemIds.push(product.id);
@@ -386,10 +410,10 @@ async function checkCeconomy(storeId) {
                 missingItems++;
             }
         }
-        /*
-        for (i = 0; (i < missingItems && i < 5); i++) {
-            await apiPage.evaluate(async (store, uuid, productId, apolloGraphVersion) => {
-                await fetch("https://" + location.host + "/api/v1/graphql", {
+
+        for (i = 0; (i < missingItems && i < 1); i++) {
+            const resp = await apiPage.evaluate(async (store, uuid, productId, apolloGraphVersion) => {
+                return await (await fetch("https://" + location.host + "/api/v1/graphql", {
                     "credentials": "include",
                     "headers": {
                         "apollographql-client-name": "pwa-client",
@@ -404,10 +428,10 @@ async function checkCeconomy(storeId) {
                     "body": "{\"operationName\":\"AddWishlistItem\",\"variables\":{\"hasMarketplace\":false,\"productId\":\"" + productId + "\"},\"extensions\":{\"pwa\":{\"salesLine\":\"" + store.graphQlName + "\",\"country\":\"DE\",\"language\":\"de\"},\"persistedQuery\":{\"version\":1,\"sha256Hash\":\"be1b866912be48a06e7b548dcf0c0084df6a28cc00b0512ef9d3a24b1ae59cdf\"}}}",
                     "method": "POST",
                     "mode": "cors"
-                });
+                })).json();
             }, store, uuidv4(), wishlistItemIds[i], apolloGraphVersion)
+            console.log(resp.data.addWishlistItem);
         }
-        */
 
         console.log(missingItems + " Items missing from Wishlist at " + store.name)
 
