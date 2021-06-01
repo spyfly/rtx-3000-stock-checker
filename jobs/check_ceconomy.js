@@ -25,7 +25,7 @@ const chat_id = config.services.telegram.chat_id;
 const debug_chat_id = config.services.telegram.debug_chat_id;
 
 const level = require('level-party');
-var db = level('./status', { valueEncoding: 'json' });
+const db = level('./status', { valueEncoding: 'json' });
 
 const imposter = require('../libs/imposter.js');
 
@@ -57,14 +57,14 @@ async function checkCeconomy(storeId) {
         }
     ]
     const store = stores[storeId];
-
     var captcha = false;
+
     try {
         var deals = {};
-        let time = performance.now();
-        var [browser, context, apiPage, proxy, collectionIds, apolloGraphVersion] = await getCollectionIds(store);
         var productsChecked = 0;
         var urls = [];
+        let time = performance.now();
+        var [browser, apiPage, proxy, apolloGraphVersion] = await getBrowserInstance(store);
 
         var productIds = [
             "2689453",
@@ -266,7 +266,7 @@ async function checkCeconomy(storeId) {
                         //Load overview page for captcha solving
                         //await imposter.updateCookies(proxy, await context.cookies());
                         await browser.close();
-                        var [browser, context, apiPage, proxy, collectionIds, apolloGraphVersion] = await getCollectionIds(store, true);
+                        var [browser, apiPage, proxy, apolloGraphVersion] = await getBrowserInstance(store, true);
 
                         //Set proper headers
                         await apiPage.setExtraHTTPHeaders({ 'Content-Type': 'application/json', 'apollographql-client-name': 'pwa-client', 'apollographql-client-version': apolloGraphVersion, "x-flow-id": uuidv4() })
@@ -449,95 +449,52 @@ async function checkCeconomy(storeId) {
         } else {
             bot.sendMessage(debug_chat_id, "An error occurred fetching the " + store.name + " Webshop Page: " + error.message);
         }
+    } finally {
+        //await imposter.updateCookies(proxy, await context.cookies());
+        await browser.close();
     }
-
-    //await imposter.updateCookies(proxy, await context.cookies());
-    await browser.close();
 }
 
-async function getCollectionIds(store, override = false) {
-    var browser_context = {
-        userAgent: config.browser.user_agent,
-        viewport: {
-            width: 1280,
-            height: 720
-        },
-        extraHTTPHeaders: {
-            DNT: "1"
-        },
-        locale: 'de-DE',
-        timezoneId: 'Europe/Berlin'
-    };
-    var proxy = "default";
-
-    //Using a proxy
-    if (config.ceconomy.proxies) {
-        if (config.ceconomy.store_proxy) {
-            // Use the same proxy every time until we get a new Captcha
-            proxy = await imposter.getProxySelection(store.name);
-
-            //Select new proxy
-            if (proxy == null || override) {
-                proxy = await imposter.getRandomProxy("", config.ceconomy.local_proxy);
-                await imposter.storeProxySelection(proxy, store.name)
-            }
-        } else {
-            // New Proxy every time
-            proxy = await imposter.getRandomProxy("", config.ceconomy.local_proxy);
-        }
-
-        if (proxy != undefined) {
-            const browserDetails = await imposter.getBrowserDetails(proxy);
-            //browser_context.storageState = {
-            //    cookies: browserDetails.cookies
-            //};
-            browser_context.proxy = {
-                server: proxy
-            };
-            browser_context.userAgent = browserDetails.userAgent;
-            browser_context.viewport = browserDetails.viewport;
-        } else {
-            proxy = "default"
-            console.log("All proxies blacklisted, using no proxy!")
-        }
-    }
-
-    //const browser = await chromium.launchPersistentContext('/tmp/rtx-3000-stock-checker/' + proxy.replace(/\./g, "-").replace(/\:/g, "_"), browser_context);
-    //const browser = await firefox.launch(browser_context);
-    //const context = await browser.newContext(browser_context);
+async function getBrowserInstance(store, override = false) {
+    const proxy = await getProxy(store, override);
     const browser = await puppeteer.launch({
         userDataDir: '/tmp/rtx-3000-stock-checker/' + proxy.replace(/\./g, "-").replace(/\:/g, "_"),
         //headless: false,
         args: [
             '--no-sandbox',
-            '--proxy-server=' + browser_context.proxy.server,
+            '--proxy-server=' + proxy,
+            '--lang=de-DE'
         ],
     });
-    const context = browser;
     const page = await browser.newPage();
 
+    await page.setExtraHTTPHeaders({
+        DNT: "1"
+    });
+
+    //Check for Last GraphQL Version Update
     const key = store.name + '_webshop_collectionids';
-    var collectionIdsLastUpdate = 0
+    var apolloGraphVersionLastUpdate = 0
     try {
-        collectionIdsLastUpdate = JSON.parse(await db.get(key + '_last_update'));
+        apolloGraphVersionLastUpdate = JSON.parse(await db.get(key + '_last_update'));
     } catch {
         console.log("Failed fetching " + key + "_last_update (Key Value Store not initialized yet propably)");
     }
 
     const now = Math.floor(Date.now() / 1000);
     var apolloGraphVersion;
-    //Update CardUrls every hour
-    if (collectionIdsLastUpdate + 60 * 60 > now && !override) {
+
+    // Update apolloGraphVersion every hour
+    if (apolloGraphVersionLastUpdate + 60 * 60 > now && !override) {
         try {
-            collectionIds = JSON.parse(await db.get(key));
             apolloGraphVersion = await db.get(key + '_api_version');
-            return [browser, context, page, proxy, collectionIds, apolloGraphVersion];
+            return [browser, page, proxy, apolloGraphVersion];
         } catch {
             console.log("Failed fetching " + key + " (Key Value Store not initialized yet propably)");
         }
     }
 
-    //Fetching collectionIds
+    //Get current apollograph version
     const storeUrl = 'https://' + store.url;
 
     let time = performance.now();
@@ -576,11 +533,11 @@ async function getCollectionIds(store, override = false) {
                 continue;
             }
 
-            console.log("Captcha Solution: ");
-            console.log(captchaSolution);
+            console.log("Captcha solved!");
+            //console.log(captchaSolution);
             try {
                 await page.waitForNavigation({ timeout: 5000 });
-                console.log("Navigated!");
+                console.log("Navigated after solving captcha!");
                 bot.sendMessage(debug_chat_id, "Solved captcha on " + store.name + " Webshop Page for IP: " + proxy + " | Attempt: " + i);
                 captchaSolved = true;
             } catch {
@@ -599,25 +556,40 @@ async function getCollectionIds(store, override = false) {
 
     await page.screenshot({ path: 'debug_' + store.name + '.png' });
     console.log(store.name + ` Store Page loaded in ${((performance.now() - time) / 1000).toFixed(2)} s`)
-    const graphQlData = await page.evaluate(() => window.__PRELOADED_STATE__.apolloState);
-    var collectionIds = [];
-    for (const [key, value] of Object.entries(graphQlData)) {
-        if (key.includes("GraphqlProductCollection:")) {
-            console.log(value.id + " | Count: " + value.totalProducts);
-            collectionIds.push(value.id);
-        }
-    }
-
-
     apolloGraphVersion = await (await (await page.waitForSelector('[name="version"]', { state: 'attached' })).getProperty("content")).jsonValue();
 
     console.log("ApolloGraphVersion: " + apolloGraphVersion)
-    console.log(collectionIds)
     await db.put(key + '_last_update', now);
-    await db.put(key, JSON.stringify(collectionIds));
     await db.put(key + '_api_version', apolloGraphVersion);
 
-    return [browser, context, page, proxy, collectionIds, apolloGraphVersion];
+    return [browser, page, proxy, apolloGraphVersion];
+}
+
+async function getProxy(store, override) {
+    var proxy = "default"
+    if (config.ceconomy.proxies) {
+        if (config.ceconomy.store_proxy) {
+            // Use the same proxy every time until we get a new Captcha
+            proxy = await imposter.getProxySelection(store.name);
+
+            //Select new proxy
+            if (proxy == null || override) {
+                proxy = await imposter.getRandomProxy("", config.ceconomy.local_proxy);
+                await imposter.storeProxySelection(proxy, store.name)
+            }
+        } else {
+            // New Proxy every time
+            proxy = await imposter.getRandomProxy("", config.ceconomy.local_proxy);
+        }
+
+        if (proxy != undefined) {
+            //const browserDetails = await imposter.getBrowserDetails(proxy);
+        } else {
+            proxy = "default"
+            console.log("All proxies blacklisted, using no proxy!")
+        }
+    }
+    return proxy;
 }
 
 function uuidv4() {
