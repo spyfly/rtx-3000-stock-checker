@@ -237,7 +237,7 @@ async function checkCeconomy(storeId) {
 
         for (url of urls) {
             var retry = 0;
-            while (retry < 2) {
+            while (retry < 3) {
 
                 //await page.waitForTimeout(5000);
                 await apiPage.setExtraHTTPHeaders({
@@ -278,124 +278,129 @@ async function checkCeconomy(storeId) {
                     await apiPage.screenshot({ path: 'debug_' + store.name + '_chunk.png' });
                 }
 
-                const jsonEl = await apiPage.waitForSelector('pre', { timeout: 10000 });
-                const htmlJSON = await apiPage.evaluate(el => el.textContent, jsonEl)
-                const json = JSON.parse(htmlJSON);
-                var stockDetails = [];
-                var isProductCollection = true;
-                var isWishlist = false;
-                if (json.errors && json.errors[0].extensions.exception.status != 400) {
-                    if (json.errors[0].extensions.status == 401) {
-                        console.log("Wishlist requires login!");
-                        const resp = await apiPage.evaluate(async (store, uuid, apolloGraphVersion, config) => {
-                            return await fetch("https://" + location.host + "/api/v1/graphql", {
-                                "credentials": "include",
-                                "headers": {
-                                    "Content-Type": "application/json",
-                                    "apollographql-client-name": "pwa-client",
-                                    "apollographql-client-version": apolloGraphVersion,
-                                    "x-operation": "LoginProfileUser",
-                                    "x-flow-id": uuid,
-                                    "x-cacheable": "false",
-                                    "X-MMS-Language": "de",
-                                    "X-MMS-Country": "DE",
-                                    "X-MMS-Salesline": store.graphQlName
-                                },
-                                "body": "{\"operationName\":\"LoginProfileUser\",\"variables\":{\"email\":\"" + config.ceconomy.username + "\",\"password\":\"" + config.ceconomy.password + "\"},\"extensions\":{\"pwa\":{\"salesLine\":\"" + store.graphQlName + "\",\"country\":\"DE\",\"language\":\"de\"},\"persistedQuery\":{\"version\":1,\"sha256Hash\":\"48888a2943b5b790b95fce729554b6f0818eda790466ca59b074156da0723746\"}}}",
-                                "method": "POST",
-                                "mode": "cors"
-                            });
-                        }, store, uuidv4(), apolloGraphVersion, config);
-                        console.log(resp);
-                    }
-                    retry++;
-                    console.log(url)
-                } else {
-                    retry = 10;
-                    if (json.data.productCollectionContent) {
-                        //New Collections (now broken)
-                        stockDetails = json.data.productCollectionContent.items.visible;
-                    } else if (json.data.getProductCollectionItems) {
-                        //Legacy Collections
-                        stockDetails = json.data.getProductCollectionItems.visible;
-                    } else if (json.data.categoryV4) {
-                        isProductCollection = false;
-                        stockDetails = json.data.categoryV4.products;
-                    } else if (json.data.wishlistItems) {
-                        isWishlist = true;
-                        //console.log("Is wishlist! | " + store.name)
-                        stockDetails = json.data.wishlistItems.items
-                    }
-
-                    for (const stockDetail of stockDetails) {
-                        var product;
-                        if (isProductCollection) {
-                            product = stockDetail.product;
-                        } else {
-                            product = stockDetail.details;
-                            //Report that we found product! (Debugging)
-                            fs.writeFile('debug/' + store.name + "_" + stockDetail.productId + ".json", JSON.stringify(stockDetail));
-                            //bot.sendMessage(debug_chat_id, "Found product on " + store.name + " via search: " + product.title + " | https://" + store.url + product.url);
-                        }
-                        productsChecked++;
-
-                        if (isWishlist && product == null) {
-                            console.log("Borked Wishlist Item found: " + stockDetail.id + " at " + store.name);
-                            // Delete borked wishlist items
-                            await apiPage.evaluate(async (store, uuid, apolloGraphVersion, stockDetail) => {
-                                await fetch("https://" + location.host + "/api/v1/graphql", {
+                try {
+                    const jsonEl = await apiPage.waitForSelector('pre', { timeout: 10000 });
+                    const htmlJSON = await apiPage.evaluate(el => el.textContent, jsonEl)
+                    const json = JSON.parse(htmlJSON);
+                    var stockDetails = [];
+                    var isProductCollection = true;
+                    var isWishlist = false;
+                    if (json.errors && json.errors[0].extensions.exception.status != 400) {
+                        if (json.errors[0].extensions.status == 401) {
+                            console.log("Wishlist requires login!");
+                            const resp = await apiPage.evaluate(async (store, uuid, apolloGraphVersion, config) => {
+                                return await fetch("https://" + location.host + "/api/v1/graphql", {
                                     "credentials": "include",
                                     "headers": {
+                                        "Content-Type": "application/json",
                                         "apollographql-client-name": "pwa-client",
                                         "apollographql-client-version": apolloGraphVersion,
-                                        "x-operation": "DeleteWishlistItem",
+                                        "x-operation": "LoginProfileUser",
                                         "x-flow-id": uuid,
                                         "x-cacheable": "false",
                                         "X-MMS-Language": "de",
                                         "X-MMS-Country": "DE",
                                         "X-MMS-Salesline": store.graphQlName
                                     },
-                                    "body": "{\"operationName\":\"DeleteWishlistItem\",\"variables\":{\"id\":\"" + stockDetail.id + "\"},\"extensions\":{\"pwa\":{\"salesLine\":\"" + store.graphQlName + "\",\"country\":\"DE\",\"language\":\"de\"},\"persistedQuery\":{\"version\":1,\"sha256Hash\":\"52c774a9ca8f9c3a0d4e9de33f37a2dadf8b65b2b5b5707484ee6aa378ba5214\"}}}",
+                                    "body": "{\"operationName\":\"LoginProfileUser\",\"variables\":{\"email\":\"" + config.ceconomy.username + "\",\"password\":\"" + config.ceconomy.password + "\"},\"extensions\":{\"pwa\":{\"salesLine\":\"" + store.graphQlName + "\",\"country\":\"DE\",\"language\":\"de\"},\"persistedQuery\":{\"version\":1,\"sha256Hash\":\"48888a2943b5b790b95fce729554b6f0818eda790466ca59b074156da0723746\"}}}",
                                     "method": "POST",
                                     "mode": "cors"
                                 });
-                            }, store, uuidv4(), apolloGraphVersion, stockDetail)
-                            continue;
+                            }, store, uuidv4(), apolloGraphVersion, config);
+                            console.log(resp);
+                        }
+                        retry++;
+                        console.log(url)
+                    } else {
+                        retry = 10;
+                        if (json.data.productCollectionContent) {
+                            //New Collections (now broken)
+                            stockDetails = json.data.productCollectionContent.items.visible;
+                        } else if (json.data.getProductCollectionItems) {
+                            //Legacy Collections
+                            stockDetails = json.data.getProductCollectionItems.visible;
+                        } else if (json.data.categoryV4) {
+                            isProductCollection = false;
+                            stockDetails = json.data.categoryV4.products;
+                        } else if (json.data.wishlistItems) {
+                            isWishlist = true;
+                            //console.log("Is wishlist! | " + store.name)
+                            stockDetails = json.data.wishlistItems.items
                         }
 
-                        if (isWishlist)
-                            wishlistItemIds.push(product.id);
+                        for (const stockDetail of stockDetails) {
+                            var product;
+                            if (isProductCollection) {
+                                product = stockDetail.product;
+                            } else {
+                                product = stockDetail.details;
+                                //Report that we found product! (Debugging)
+                                fs.writeFile('debug/' + store.name + "_" + stockDetail.productId + ".json", JSON.stringify(stockDetail));
+                                //bot.sendMessage(debug_chat_id, "Found product on " + store.name + " via search: " + product.title + " | https://" + store.url + product.url);
+                            }
+                            productsChecked++;
 
-                        //Product exists?
-                        if (!product)
-                            continue;
+                            if (isWishlist && product == null) {
+                                console.log("Borked Wishlist Item found: " + stockDetail.id + " at " + store.name);
+                                // Delete borked wishlist items
+                                await apiPage.evaluate(async (store, uuid, apolloGraphVersion, stockDetail) => {
+                                    await fetch("https://" + location.host + "/api/v1/graphql", {
+                                        "credentials": "include",
+                                        "headers": {
+                                            "apollographql-client-name": "pwa-client",
+                                            "apollographql-client-version": apolloGraphVersion,
+                                            "x-operation": "DeleteWishlistItem",
+                                            "x-flow-id": uuid,
+                                            "x-cacheable": "false",
+                                            "X-MMS-Language": "de",
+                                            "X-MMS-Country": "DE",
+                                            "X-MMS-Salesline": store.graphQlName
+                                        },
+                                        "body": "{\"operationName\":\"DeleteWishlistItem\",\"variables\":{\"id\":\"" + stockDetail.id + "\"},\"extensions\":{\"pwa\":{\"salesLine\":\"" + store.graphQlName + "\",\"country\":\"DE\",\"language\":\"de\"},\"persistedQuery\":{\"version\":1,\"sha256Hash\":\"52c774a9ca8f9c3a0d4e9de33f37a2dadf8b65b2b5b5707484ee6aa378ba5214\"}}}",
+                                        "method": "POST",
+                                        "mode": "cors"
+                                    });
+                                }, store, uuidv4(), apolloGraphVersion, stockDetail)
+                                continue;
+                            }
 
-                        //Skip 3rd Party Stores
-                        if (!stockDetail.availability.delivery)
-                            continue;
+                            if (isWishlist)
+                                wishlistItemIds.push(product.id);
 
-                        //Skip if out of stock
-                        if (stockDetail.availability.delivery.availabilityType == 'NONE')
-                            continue;
+                            //Product exists?
+                            if (!product)
+                                continue;
 
-                        //Skip if Warehouse Quantity is 0
-                        if (stockDetail.availability.delivery.availabilityType == "IN_WAREHOUSE" && stockDetail.availability.delivery.quantity == 0)
-                            continue;
+                            //Skip 3rd Party Stores
+                            if (!stockDetail.availability.delivery)
+                                continue;
 
-                        var id = stockDetail.productId;
-                        if (isWishlist)
-                            id = product.id
+                            //Skip if out of stock
+                            if (stockDetail.availability.delivery.availabilityType == 'NONE')
+                                continue;
 
-                        const card = {
-                            title: product.title,
-                            href: "https://" + store.url + product.url,
-                            price: stockDetail.price.price
+                            //Skip if Warehouse Quantity is 0
+                            if (stockDetail.availability.delivery.availabilityType == "IN_WAREHOUSE" && stockDetail.availability.delivery.quantity == 0)
+                                continue;
+
+                            var id = stockDetail.productId;
+                            if (isWishlist)
+                                id = product.id
+
+                            const card = {
+                                title: product.title,
+                                href: "https://" + store.url + product.url,
+                                price: stockDetail.price.price
+                            }
+                            deals[id] = card;
+
+                            //console.log(stockDetail);
+                            console.log(card.title + " in stock for " + card.price + "€ at " + store.name)
                         }
-                        deals[id] = card;
-
-                        //console.log(stockDetail);
-                        console.log(card.title + " in stock for " + card.price + "€ at " + store.name)
                     }
+                } catch (err) {
+                    console.log("Failed fetching Data from " + store.name + " Error: " + err.stack);
+                    retry++;
                 }
             }
         }
