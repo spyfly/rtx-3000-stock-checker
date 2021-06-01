@@ -18,6 +18,8 @@ const deal_notify = require('../libs/deal_notify.js');
 
 const { parse } = require('node-html-parser');
 
+const imposter = require('../libs/imposter.js');
+
 function getRandom(min, max) {
     return Math.floor(Math.random() * (max - min) + min);
 }
@@ -38,12 +40,15 @@ async function main() {
 
     //Using a proxy
     if (config.alternate.proxies) {
-        const imposter = require('../libs/imposter.js');
-
         proxy = await imposter.getRandomProxy();
         browserDetails = await imposter.getBrowserDetails(proxy);
         axios_config.httpsAgent = new SocksProxyAgent(proxy);
         axios_config.headers = { 'User-Agent': browserDetails.userAgent }
+        axios_config.withCredentials = true;
+        if (browserDetails.cookies.length > 0) {
+            //console.log(browserDetails.cookies)
+            axios_config.headers["Cookie"] = browserDetails.cookies.join("; ")
+        }
     }
 
     try {
@@ -56,6 +61,13 @@ async function main() {
         while (productsCount == 24 && failure < 5) {
             try {
                 response = await axios.get(getWebshopUrl(i++), axios_config);
+                //Get Cookies and Store
+                const overviewCookies = await getCookies(response)
+                if (overviewCookies.length > 0) {
+                    console.log(overviewCookies);
+                    await imposter.updateCookies(proxy, overviewCookies);
+                }
+                // Store cookies end
             } catch (err) {
                 failure++;
                 console.log("Failed fetching Alternate Product Overview: " + err.message)
@@ -90,16 +102,27 @@ async function main() {
         for (const cardUrl of cardUrls) {
             //Using a proxy
             if (config.alternate.proxies) {
-                const imposter = require('../libs/imposter.js');
-
                 proxy = await imposter.getRandomProxy();
                 browserDetails = await imposter.getBrowserDetails(proxy);
                 axios_config.httpsAgent = new SocksProxyAgent(proxy);
                 axios_config.headers = { 'User-Agent': browserDetails.userAgent }
+                axios_config.withCredentials = true;
+                if (browserDetails.cookies.length > 0) {
+                    //console.log(browserDetails.cookies)
+                    axios_config.headers["Cookie"] = browserDetails.cookies.join("; ")
+                }
             }
-            const req = axios.get(cardUrl, axios_config).then((res) => {
+            const req = axios.get(cardUrl, axios_config).then(async (res) => {
+                //Get Cookies and Store
+                const overviewCookies = await getCookies(res)
+                if (overviewCookies.length > 0) {
+                    console.log(overviewCookies);
+                    await imposter.updateCookies(proxy, overviewCookies);
+                }
+                // Store cookies end
+
                 if (res.status == 521) {
-                    console.log("Failed fetching Asus Product Page for " + cardUrl);
+                    console.log("Failed fetching Alternate Product Page for " + cardUrl);
                 } else if (res.status == 404) {
                     //const out_of_stock = res.data.includes("Dieser Artikel ist leider nicht mehr verfügbar!");
                     console.log("Card not listed anymore for " + cardUrl);
@@ -130,6 +153,8 @@ async function main() {
                         console.log("No product information found!");
                     }
                 }
+            }, (err) => {
+                console.log("Failed fetching Alternate Product Page for: " + cardUrl);
             });
             requests.push(req);
         }
@@ -145,6 +170,16 @@ async function main() {
         console.log(error);
         bot.sendMessage(debug_chat_id, "An error occurred fetching the Alternate Webshop Page: ```\n" + error.stack + "\n```", { parse_mode: 'MarkdownV2' });
     }
+}
+
+async function getCookies(response) {
+    var cookies = [];
+    if (response.headers["set-cookie"]) {
+        for (const cookie of response.headers["set-cookie"]) {
+            cookies.push(cookie.split("; ")[0]);
+        }
+    }
+    return cookies;
 }
 
 main();
