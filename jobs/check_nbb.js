@@ -61,9 +61,6 @@ async function checkNbbApi(storeUrl, apiPage) {
         proxy = await imposter.getRandomProxy("nbb");
         const browserDetails = await imposter.getBrowserDetails(proxy);
         if (proxy != undefined) {
-            browser_context.storageState = {
-                cookies: browserDetails.cookies
-            };
             browser_context.proxy = {
                 server: proxy
             };
