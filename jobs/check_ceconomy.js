@@ -469,7 +469,8 @@ async function checkCeconomy(storeId) {
         }
     } finally {
         //await imposter.updateCookies(proxy, await context.cookies());
-        await browser.close();
+        if (browser)
+            await browser.close();
     }
 }
 
