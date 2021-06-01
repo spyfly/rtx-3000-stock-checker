@@ -577,13 +577,18 @@ async function getBrowserInstance(store, override = false) {
 
     await page.screenshot({ path: 'debug_' + store.name + '.png' });
     console.log(store.name + ` Store Page loaded in ${((performance.now() - time) / 1000).toFixed(2)} s`)
-    apolloGraphVersion = await (await (await page.waitForSelector('[name="version"]', { state: 'attached' })).getProperty("content")).jsonValue();
+    try {
+        apolloGraphVersion = await (await (await page.waitForSelector('[name="version"]', { state: 'attached' })).getProperty("content")).jsonValue();
 
-    console.log("ApolloGraphVersion: " + apolloGraphVersion)
-    await db.put(key + '_last_update', now);
-    await db.put(key + '_api_version', apolloGraphVersion);
+        console.log("ApolloGraphVersion: " + apolloGraphVersion)
+        await db.put(key + '_last_update', now);
+        await db.put(key + '_api_version', apolloGraphVersion);
 
-    return [browser, page, proxy, apolloGraphVersion];
+        return [browser, page, proxy, apolloGraphVersion];
+    } catch {
+        console.log("Getting new Browser Instance after being unable to fetch ApolloGraphVersion for " + store.name);
+        return getBrowserInstance(store, override);
+    }
 }
 
 async function getProxy(store, override) {
