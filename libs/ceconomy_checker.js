@@ -29,6 +29,10 @@ const db = level('./status', { valueEncoding: 'json' });
 
 const imposter = require('./imposter.js');
 
+const blacklistedIds = [
+    "2737445"
+];
+
 async function checkCeconomy(storeId) {
     const stores = [
         {
@@ -312,7 +316,7 @@ async function checkCeconomy(storeId) {
         }
 
         for (i = 0; (i < missingItems.length && i < 5); i++) {
-
+            console.log(missingItems[i]);
             const resp = await apiPage.evaluate(async (store, uuid, productId, apolloGraphVersion) => {
                 return await (await fetch("https://" + location.host + "/api/v1/graphql", {
                     "credentials": "include",
@@ -478,7 +482,8 @@ async function getBrowserInstance(store, override = false) {
                 const productCollectionItems = value.items.visible.concat(value.items.hidden);
                 //console.log(productCollectionItems);
                 for (const productCollectionItem of productCollectionItems) {
-                    productIds.push(productCollectionItem.productId);
+                    if (!blacklistedIds.includes(productCollectionItem.productId))
+                        productIds.push(productCollectionItem.productId);
                 }
             }
         }
