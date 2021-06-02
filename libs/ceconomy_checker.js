@@ -18,7 +18,7 @@ const RecaptchaOptions = {
 puppeteer.use(StealthPlugin());
 puppeteer.use(RecaptchaPlugin(RecaptchaOptions))
 
-const deal_notify = require('../libs/deal_notify.js');
+const deal_notify = require('./deal_notify.js');
 
 const bot = new TelegramBot(config.services.telegram.token);
 const chat_id = config.services.telegram.chat_id;
@@ -27,19 +27,7 @@ const debug_chat_id = config.services.telegram.debug_chat_id;
 const level = require('level-party');
 const db = level('./status', { valueEncoding: 'json' });
 
-const imposter = require('../libs/imposter.js');
-
-(async () => {
-    var tasks = [];
-    //Check Saturn
-    tasks.push(checkCeconomy(0));
-
-    //Check Mediamarkt
-    tasks.push(checkCeconomy(1));
-
-    await Promise.all(tasks);
-    db.close();
-})();
+const imposter = require('./imposter.js');
 
 async function checkCeconomy(storeId) {
     const stores = [
@@ -469,9 +457,10 @@ async function checkCeconomy(storeId) {
         }
     } finally {
         //await imposter.updateCookies(proxy, await context.cookies());
-        console.log("Closing Browser!");
+        //console.log("Closing Browser!");
         await browser.close();
-        console.log("Browser closed!");
+        //console.log("Browser closed!");
+        db.close();
     }
 }
 
@@ -626,3 +615,5 @@ function uuidv4() {
         return v.toString(16);
     });
 }
+
+module.exports = checkCeconomy;

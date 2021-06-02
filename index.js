@@ -25,7 +25,12 @@ const bree = new Bree({
       closeWorkerAfterMs: 28500
     },
     {
-      name: 'check_ceconomy',
+      name: 'check_mediamarkt',
+      cron: config.ceconomy.cron,
+      hasSeconds: true
+    },
+    {
+      name: 'check_saturn',
       cron: config.ceconomy.cron,
       hasSeconds: true
     }
