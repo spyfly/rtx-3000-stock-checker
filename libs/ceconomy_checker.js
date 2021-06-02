@@ -52,112 +52,7 @@ async function checkCeconomy(storeId) {
         var productsChecked = 0;
         var urls = [];
         let time = performance.now();
-        var [browser, apiPage, proxy, apolloGraphVersion] = await getBrowserInstance(store);
-
-        var productIds = [
-            "2689453",
-            "2691444",
-            "2712013",
-            "2728199",
-            "2728200",
-            "2681871",
-            "2719146",
-            "2719167",
-            "2719315",
-            "2719148",
-            "2718593",
-            "2718594",
-            "2728198",
-            "2721941",
-            "2703466",
-            "2727942",
-            "2712011",
-            "2688473",
-            "2689451",
-            "2683942",
-            "2684238",
-            "2683229",
-            "2683227",
-            "2683243",
-            "2681869",
-            "2681859",
-            "2696164",
-            "2703443",
-            "2695943",
-            "2695941",
-            "2695942",
-            "2694898",
-            "2694896",
-            "2694894",
-            "2691439",
-            "2691247",
-            "2691246",
-            "2691244",
-            "2702989",
-            "2702988",
-            "2702990",
-            "2701237",
-            "2701234",
-            "2701240",
-            "2719459",
-            "2719456",
-            "2719457",
-            "2719314",
-            "2719460",
-            "2719317",
-            "2719161",
-            "2722386",
-            "2704390",
-            "2704389",
-            "2704387",
-            "2704388",
-            "2719160",
-            "2719152",
-            "2719165",
-            "2688497",
-            "2691245",
-            "2709853",
-            "2719163",
-            "2719159",
-            "2712924",
-            "2721985",
-            "2719166",
-            "2691243",
-            "2701238",
-            "2696163",
-            "2695671",
-            "2684241",
-            "2691443",
-            "2683937",
-            "2691438",
-            "2681861",
-            "2704437",
-            "2711769",
-            "2703530",
-            "2704436",
-            "2703526",
-            "2703467",
-            "2698339",
-            "2712787",
-            "2709470",
-            "2712909",
-            "2712010",
-            "2712012",
-            "2718003",
-            "2714233",
-            "2701596",
-            "2715323",
-            "2702991",
-            "2702992",
-            "2701239",
-            "2719151",
-            "2691365",
-            "2712784",
-            "2732518",
-            "2719147",
-            "2728201",
-            "2712800"
-        ];
+        var [browser, apiPage, proxy, apolloGraphVersion, productIds] = await getBrowserInstance(store);
 
         /*
         Currently broken
@@ -208,7 +103,7 @@ async function checkCeconomy(storeId) {
 
         urls.push("https://" + store.url + "/api/v1/graphql?anti-cache=" + new Date().getTime() + "&operationName=CategoryV4&variables=%7B%22hasMarketplace%22%3Atrue%2C%22filters%22%3A%5B%22graphicsCard%3A" + encodeURIComponent(checkedGPUs.join(" OR ")) + "%22%2C%22graphicsBrand%3ANVIDIA%22%5D%2C%22storeId%22%3A%22480%22%2C%22wcsId%22%3A%22" + store.gpuCategoryId + "%22%2C%22page%22%3A1%2C%22experiment%22%3A%22mp%22%7D&extensions=%7B%22pwa%22%3A%7B%22salesLine%22%3A%22" + store.graphQlName + "%22%2C%22country%22%3A%22DE%22%2C%22language%22%3A%22de%22%2C%22contentful%22%3Atrue%7D%2C%22persistedQuery%22%3A%7B%22version%22%3A1%2C%22sha256Hash%22%3A%22059e0d217e1245a9221360b7f9c4fe3bc8de9b9e0469931b454d743cc939040c%22%7D%7D");
 
-        for (var i = 0; i < 5; i++) {
+        for (var i = 0; i < 6; i++) {
             var vars = {
                 hasMarketplace: true,
                 shouldFetchBasket: true,
@@ -264,7 +159,7 @@ async function checkCeconomy(storeId) {
                         //Load overview page for captcha solving
                         //await imposter.updateCookies(proxy, await context.cookies());
                         await browser.close();
-                        var [browser, apiPage, proxy, apolloGraphVersion] = await getBrowserInstance(store, true);
+                        var [browser, apiPage, proxy, apolloGraphVersion, productIds] = await getBrowserInstance(store, true);
 
                         //Set proper headers
                         await apiPage.setExtraHTTPHeaders({ 'Content-Type': 'application/json', 'apollographql-client-name': 'pwa-client', 'apollographql-client-version': apolloGraphVersion, "x-flow-id": uuidv4() })
@@ -498,15 +393,16 @@ async function getBrowserInstance(store, override = false) {
     // Update apolloGraphVersion every hour
     if (apolloGraphVersionLastUpdate + 60 * 60 > now && !override) {
         try {
+            productIds = JSON.parse(await db.get(key + '_product_ids'));
             apolloGraphVersion = await db.get(key + '_api_version');
-            return [browser, page, proxy, apolloGraphVersion];
+            return [browser, page, proxy, apolloGraphVersion, productIds];
         } catch {
             console.log("Failed fetching " + key + " (Key Value Store not initialized yet propably)");
         }
     }
 
     //Get current apollograph version
-    const storeUrl = 'https://' + store.url;
+    const storeUrl = 'https://' + store.url + "/de/campaign/grafikkarten-nvidia-geforce-rtx-30";
 
     let time = performance.now();
     await page.goto(storeUrl, { waitUntil: 'load', timeout: 30000 });
@@ -574,7 +470,22 @@ async function getBrowserInstance(store, override = false) {
         await db.put(key + '_last_update', now);
         await db.put(key + '_api_version', apolloGraphVersion);
 
-        return [browser, page, proxy, apolloGraphVersion];
+        // Grab Product Ids from Overview Page
+        const graphQlData = await page.evaluate(() => window.__PRELOADED_STATE__.apolloState);
+        var productIds = [];
+        for (const [key, value] of Object.entries(graphQlData)) {
+            if (key.includes("GraphqlProductCollection:")) {
+                const productCollectionItems = value.items.visible.concat(value.items.hidden);
+                //console.log(productCollectionItems);
+                for (const productCollectionItem of productCollectionItems) {
+                    productIds.push(productCollectionItem.productId);
+                }
+            }
+        }
+
+        await db.put(key + '_product_ids', JSON.stringify(productIds));
+
+        return [browser, page, proxy, apolloGraphVersion, productIds];
     } catch {
         console.log("Getting new Browser Instance after being unable to fetch ApolloGraphVersion for " + store.name);
         await browser.close();
