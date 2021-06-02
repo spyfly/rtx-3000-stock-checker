@@ -68,28 +68,28 @@ async function main() {
                     await imposter.updateCookies(proxy, overviewCookies);
                 }
                 // Store cookies end
+
+                const root = parse(response.data);
+                const products = root.querySelectorAll('.card');
+                productsCount = products.length;
+                console.log(productsCount + " Products found.")
+
+                products.forEach(async product => {
+                    const card = {}
+                    card.title = product.querySelector('.productPicture').getAttribute('alt').split(',')[0];
+                    card.href = product.getAttribute("href");
+                    card.price = parseFloat(product.querySelector('.price').textContent.replace("€ ", "").replace(".", "").replace(",", "."));
+                    const id = card.href;
+
+                    if (card.price < 2000) {
+                        cardUrls.push(card.href);
+                        //console.log(card.title);
+                    }
+                });
             } catch (err) {
                 failure++;
                 console.log("Failed fetching Alternate Product Overview: " + err.message)
             }
-
-            const root = parse(response.data);
-            const products = root.querySelectorAll('.card');
-            productsCount = products.length;
-            console.log(productsCount + " Products found.")
-
-            products.forEach(async product => {
-                const card = {}
-                card.title = product.querySelector('.productPicture').getAttribute('alt').split(',')[0];
-                card.href = product.getAttribute("href");
-                card.price = parseFloat(product.querySelector('.price').textContent.replace("€ ", "").replace(".", "").replace(",", "."));
-                const id = card.href;
-
-                if (card.price < 2000) {
-                    cardUrls.push(card.href);
-                    //console.log(card.title);
-                }
-            });
         }
 
         axios_config.validateStatus = function (status) {
