@@ -64,7 +64,7 @@ async function main() {
                 //Get Cookies and Store
                 const overviewCookies = await getCookies(response)
                 if (overviewCookies.length > 0) {
-                    console.log(overviewCookies);
+                    //console.log(overviewCookies);
                     await imposter.updateCookies(proxy, overviewCookies);
                 }
                 // Store cookies end
@@ -87,7 +87,7 @@ async function main() {
 
                 if (card.price < 2000) {
                     cardUrls.push(card.href);
-                    console.log(card.title);
+                    //console.log(card.title);
                 }
             });
         }
@@ -116,7 +116,7 @@ async function main() {
                 //Get Cookies and Store
                 const overviewCookies = await getCookies(res)
                 if (overviewCookies.length > 0) {
-                    console.log(overviewCookies);
+                    //console.log(overviewCookies);
                     await imposter.updateCookies(proxy, overviewCookies);
                 }
                 // Store cookies end
