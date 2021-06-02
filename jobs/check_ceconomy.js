@@ -488,7 +488,7 @@ async function getBrowserInstance(store, override = false) {
         ],
     });
     const page = await browser.newPage();
-    await page.setUserAgent(browserDetails.userAgent)
+    //await page.setUserAgent(browserDetails.userAgent)
 
     await page.setExtraHTTPHeaders({
         DNT: "1"
