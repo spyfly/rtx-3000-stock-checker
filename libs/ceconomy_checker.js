@@ -107,7 +107,7 @@ async function checkCeconomy(storeId) {
 
         urls.push("https://" + store.url + "/api/v1/graphql?anti-cache=" + new Date().getTime() + "&operationName=CategoryV4&variables=%7B%22hasMarketplace%22%3Atrue%2C%22filters%22%3A%5B%22graphicsCard%3A" + encodeURIComponent(checkedGPUs.join(" OR ")) + "%22%2C%22graphicsBrand%3ANVIDIA%22%5D%2C%22storeId%22%3A%22480%22%2C%22wcsId%22%3A%22" + store.gpuCategoryId + "%22%2C%22page%22%3A1%2C%22experiment%22%3A%22mp%22%7D&extensions=%7B%22pwa%22%3A%7B%22salesLine%22%3A%22" + store.graphQlName + "%22%2C%22country%22%3A%22DE%22%2C%22language%22%3A%22de%22%2C%22contentful%22%3Atrue%7D%2C%22persistedQuery%22%3A%7B%22version%22%3A1%2C%22sha256Hash%22%3A%22059e0d217e1245a9221360b7f9c4fe3bc8de9b9e0469931b454d743cc939040c%22%7D%7D");
 
-        for (var i = 0; i < 6; i++) {
+        for (var i = 0; i < 7; i++) {
             var vars = {
                 hasMarketplace: true,
                 shouldFetchBasket: true,
