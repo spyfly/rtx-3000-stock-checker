@@ -88,7 +88,20 @@ async function main() {
                 });
             } catch (err) {
                 failure++;
-                console.log("Failed fetching Alternate Product Overview: " + err.message)
+                console.log("Failed fetching Alternate Product Overview: " + err.message + " | Proxy: " + proxy)
+
+                // Attempt using different Proxy
+                if (config.alternate.proxies) {
+                    proxy = await imposter.getRandomProxy();
+                    browserDetails = await imposter.getBrowserDetails(proxy);
+                    axios_config.httpsAgent = new SocksProxyAgent(proxy);
+                    axios_config.headers = { 'User-Agent': browserDetails.userAgent }
+                    axios_config.withCredentials = true;
+                    if (browserDetails.cookies.length > 0) {
+                        //console.log(browserDetails.cookies)
+                        axios_config.headers["Cookie"] = browserDetails.cookies.join("; ")
+                    }
+                }
             }
         }
 
