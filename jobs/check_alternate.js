@@ -27,8 +27,18 @@ function getRandom(min, max) {
 const startPrice = getRandom(50, 250);
 const maxPrice = getRandom(3000, 3500);
 
+const checkedGPUs = [
+    "NVIDIA GeForce RTX 3060",
+    "NVIDIA GeForce RTX 3060 Ti",
+    "NVIDIA GeForce RTX 3070",
+    "NVIDIA GeForce RTX 3070 Ti",
+    "NVIDIA GeForce RTX 3080",
+    "NVIDIA GeForce RTX 3080 Ti",
+    "NVIDIA GeForce RTX 3090"
+];
+
 function getWebshopUrl(page = 1) {
-    return 'https://www.alternate.de/listing_ajax.xhtml?t=21466&listing=1&filter_-2=true&filter_2203=NVIDIA+GeForce+RTX+3080&filter_2203=NVIDIA+GeForce+RTX+3070&filter_2203=NVIDIA+GeForce+RTX+3060+Ti&filter_2203=NVIDIA+GeForce+RTX+3060&filter_2203=NVIDIA+GeForce+RTX+3090&s=price_asc&page=' + page + '&pr1=' + startPrice + '&pr2=' + maxPrice;
+    return 'https://www.alternate.de/listing_ajax.xhtml?t=21466&listing=1&filter_-2=true&filter_2203=' + checkedGPUs.join('&filter_2203=') + '&s=price_asc&page=' + page + '&pr1=' + startPrice + '&pr2=' + maxPrice;
 }
 
 async function main() {
