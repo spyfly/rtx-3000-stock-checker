@@ -34,13 +34,11 @@ module.exports = async function (deals, db_index, shop_name) {
             //Notify about new Deal
             if (is_good_deal(deal)) {
                 console.log("Good deal!");
-                const { message_id } = await bot.sendMessage(deals_chat_id, createMessage(deal), { parse_mode: 'HTML', disable_web_page_preview: true })
-                deals[id].deal_message_id = message_id;
+                deals[id].deal_message_id = await sendDealsMessage(deals_chat_id, deal);
             }
-            const { message_id } = await bot.sendMessage(chat_id, createMessage(deal), { parse_mode: 'HTML', disable_web_page_preview: true })
 
             //Store Message ID
-            deals[id].message_id = message_id;
+            deals[id].message_id = await sendDealsMessage(chat_id, deal);
         }
 
         deals[id].lastSeen = Math.floor(Date.now() / 1000);
@@ -108,4 +106,26 @@ function createMessage(deal) {
     }
 
     return prefix + ' <a href="' + deal.href + '">' + deal.title + '</a> for <b>' + deal.price.toFixed(2) + '€</b>' + suffix;
+}
+
+async function sendDealsMessage(chatId, deal) {
+    var message_id;
+    try {
+        var { message_id } = await bot.sendMessage(chatId, createMessage(deal), { parse_mode: 'HTML', disable_web_page_preview: true })
+    } catch (err) {
+        const err_message = err.message;
+        if (err_message.includes("ETELEGRAM: 429 Too Many Requests: retry after ")) {
+            const wait_for_seconds = parseInt(err_message.replace("ETELEGRAM: 429 Too Many Requests: retry after ", ""));
+            console.log("Telegram Error! Retry after " + wait_for_seconds + " seconds!");
+            await sleep(wait_for_seconds * 1000 + 1000);
+            var { message_id } = await bot.sendMessage(chatId, createMessage(deal), { parse_mode: 'HTML', disable_web_page_preview: true })
+        }
+    }
+    return message_id;
+}
+
+function sleep(ms) {
+    return new Promise((resolve) => {
+        setTimeout(resolve, ms);
+    });
 }
