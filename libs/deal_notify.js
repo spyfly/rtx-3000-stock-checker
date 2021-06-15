@@ -105,7 +105,21 @@ function createMessage(deal) {
         suffix = ' (gone at ' + goneTime + ')';
     }
 
-    return prefix + ' <a href="' + deal.href + '">' + deal.title + '</a> for <b>' + deal.price.toFixed(2) + '€</b>' + suffix;
+    return prefix + ' <a href="' + deal.href + '">' + deal.title + '</a> for <b>' + deal.price.toFixed(2) + '€</b> at <i>' + getShopName(deal.href) + '</i>' + suffix;
+}
+
+function getShopName(url) {
+    if (url.includes("alternate.de")) {
+        return "Scalpernate";
+    } else if (url.includes("saturn.de")) {
+        return "Saturn";
+    } else if (url.includes("mediamarkt.de")) {
+        return "MediaMarkt";
+    } else if (url.includes("notebooksbilliger.de")) {
+        return "Grafikkartenteurer";
+    } else if (url.includes("asus.com")) {
+        return "Asus";
+    }
 }
 
 async function sendDealsMessage(chatId, deal) {
