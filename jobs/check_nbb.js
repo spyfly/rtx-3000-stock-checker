@@ -8,10 +8,18 @@ const debug_chat_id = config.services.telegram.debug_chat_id;
 
 const { chromium } = require('playwright')
 
+const puppeteer = require('puppeteer-extra')
+const StealthPlugin = require('puppeteer-extra-plugin-stealth');
+puppeteer.use(StealthPlugin())
+
 const nbb_parser = require('../libs/nbb_parser.js');
 const deal_notify = require('../libs/deal_notify.js');
 
 const imposter = require('../libs/imposter.js');
+
+const crypto = require("crypto");
+
+const level = require('level-party')
 
 function getRandom(min, max) {
     return Math.floor(Math.random() * (max - min) + min);
@@ -36,6 +44,8 @@ function getRandom(min, max) {
                 console.log("Failed fetching NBB " + name + " page:" + err)
             });
     }
+
+    tasks.push(checkNbbPaymentGateways());
 
     await Promise.all(tasks);
     await deal_notify(nbbDeals, 'nbb_deals', 'nbb');
@@ -104,4 +114,159 @@ async function checkNbbApi(storeUrl, apiPage) {
         }
     }
     await browser.close();
+}
+
+async function checkNbbPaymentGateways() {
+    var browser_context = {
+        userAgent: config.browser.user_agent,
+        viewport: {
+            width: 1280,
+            height: 720
+        },
+        extraHTTPHeaders: {
+            DNT: "1"
+        },
+        locale: 'de-DE',
+        timezoneId: 'Europe/Berlin',
+    };
+    var proxy = "default";
+
+    //Using a proxy
+    if (config.nbb.proxies) {
+        proxy = await imposter.getRandomProxy("nbb");
+        const browserDetails = await imposter.getBrowserDetails(proxy);
+        if (proxy != undefined) {
+            browser_context.proxy = {
+                server: proxy
+            };
+            browser_context.userAgent = browserDetails.userAgent;
+            browser_context.viewport = browserDetails.viewport;
+        } else {
+            proxy = "default";
+            console.log("All Proxies blacklisted on NBB.com!");
+            bot.sendMessage(debug_chat_id, "All Proxies blacklisted on NBB.com!");
+        }
+    }
+
+    const context = await puppeteer.launch({
+        userDataDir: '/tmp/nbb-cart-checker/',
+        args: [
+            '--no-sandbox',
+            '--proxy-server=' + proxy,
+            '--lang=de-DE'
+        ],
+    });
+    const page = await context.newPage();
+    await page.goto("https://m.notebooksbilliger.de/checkout/init");
+
+    const response = await page.content();
+    if (response.includes("client has been blocked by bot protection")) {
+        console.log("Blocked by Bot Protection on the NBB Checkout Page | Proxy: " + proxy);
+        //await page.screenshot({ path: 'debug_' + apiPage + '_blocked.png' });
+        //bot.sendPhoto(debug_chat_id, 'debug_' + apiPage + '_blocked.png', { caption: "Blocked by Bot Protection on the NBB " + apiPage + " Page | Proxy: " + proxy });
+        //console.log("Generating new User Agent for Proxy: " + proxy);
+        //await imposter.generateNewDetails(proxy);
+        imposter.blackListProxy(proxy, "nbb");
+    } else {
+        try {
+            const jsonEl = await page.waitForSelector('pre', { timeout: 10000 });
+            const json = JSON.parse(await page.evaluate(el => el.textContent, jsonEl));
+            if (json.error) {
+                console.log("Couldn't fetch payment methods!")
+
+                if (json.error = ['customer_not_logged_in']) {
+                    console.log("Require login!");
+                    await performNbbLogin(page);
+                    if (json.cartCount == 0) {
+                        console.log("Require adding product to cart!");
+                        await page.goto('https://m.notebooksbilliger.de/msi+geforce+gt+710+1gd3h+lp');
+                        await page.click('.qa-product-add-to-shopping-cart-pdp-regular');
+                        console.log("Added product to cart!");
+                    }
+                    //console.log(json);
+                } else {
+                    console.log(json.error);
+                }
+            } else {
+                var payment_methods = [];
+                for (const payment_module of json.modules) {
+                    payment_methods.push(payment_module.id);
+                }
+
+                const db = level('./status', { valueEncoding: 'json' })
+                var old_payment_methods = {}
+                try {
+                    old_payment_methods = JSON.parse(await db.get("nbb_payment_methods"));
+                } catch {
+                    console.log("Failed fetching nbb_payment_methods (Key Value Store not initialized yet propably)");
+                }
+
+                //payment_methods = [['klarnapaylater']];
+                console.log(payment_methods.length + " Payment Methods found on NBB!");
+                console.log(payment_methods);
+
+                if (payment_methods.length != old_payment_methods.length && old_payment_methods.length > 0) {
+                    var message = "";
+                    if (old_payment_methods > payment_methods) {
+                        console.log("Drop incoming")
+                        message = `🌠 <b>Alle Mann auf Gefechtsstation!</b>\n<a href="https://shop.nvidia.com/de-de/geforce/store/">NVIDIA Founders Edition Drop</a> incoming!`;
+                    } else {
+                        console.log("Drop is over!")
+                        message = `⚠️ <b>Entwarnung!</b>\nDer NVIDIA Founders Edition Drop für heute ist vorbei.`;
+                    }
+                    await bot.sendMessage(config.services.telegram.deals_chat_id, message, { parse_mode: 'HTML', disable_web_page_preview: true })
+
+                }
+
+                await db.put("nbb_payment_methods", JSON.stringify(payment_methods));
+                await db.close();
+            }
+
+        } catch (error) {
+            console.log(error);
+            bot.sendMessage(chat_id, "An error occurred fetching the NBB Checkout Page");
+        }
+    }
+
+    await context.close();
+}
+
+async function performNbbLogin(page) {
+    const resp = await page.evaluate(async (credentials) => await (await fetch("https://m.notebooksbilliger.de/auth/login", {
+        "credentials": "include",
+        "headers": {
+            "Content-Type": "application/json;charset=utf-8"
+        },
+        "referrer": "https://m.notebooksbilliger.de/kundenkonto/login",
+        "body": "{\"email\":\"" + credentials.email + "\",\"password\":\"" + credentials.password + "\"}",
+        "method": "POST",
+        "mode": "cors"
+    })).text(), config.nbb.loginDetails);
+    //console.log(resp);
+}
+
+
+
+async function addProductToCart(page, productId) {
+    const details = {
+        multipartId: "------WebKitFormBoundary" + crypto.randomBytes(8).toString('hex'),
+        productId: productId
+    }
+    console.log(details)
+
+    const text = await page.evaluate(async (self) => {
+        return await (await fetch("https://m.notebooksbilliger.de/cart/add/", {
+            "credentials": "include",
+            "headers": {
+                "Accept": "application/json, text/plain, */*",
+                "Content-Type": "multipart/form-data; boundary=" + self.multipartId,
+                "Pragma": "no-cache",
+                "Cache-Control": "no-cache",
+            },
+            "body": self.multipartId + "\nContent-Disposition: form-data; name=\"id\"\n\n" + self.productId + "\n" + self.multipartId + "--\n",
+            "method": "POST",
+            "mode": "cors"
+        })).text();
+    }, details);
+    console.log(text);
 }
