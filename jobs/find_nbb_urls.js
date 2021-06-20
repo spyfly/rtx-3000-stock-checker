@@ -61,8 +61,15 @@ async function main() {
                 const id = res.config.url.split("-p")[1];
                 if (gpuEtags[eTag]) {
                     const page = await context.newPage();
-                    await page.goto("https://m.notebooksbilliger.de/products_id/" + id);
-                    const url = await page.url();
+                    await page.goto("https://www.notebooksbilliger.de/Produkte/Grafikkarten/action");
+                    await page.setContent(`<form method="post" action="https://www.notebooksbilliger.de/Produkte/Grafikkarten/action/add_product">
+                        <input type="hidden" name="products_id" value="${id}">
+                        <button type="submit" id="add_to_cart">
+                            In den Warenkorb
+                        </button>
+                    </form>`);
+                    await Promise.all([page.click('#add_to_cart'), page.waitForNavigation({ timeout: 120000 })]);
+                    const url = (await page.url()).split("/produkte/grafikkarten")[0];
                     await page.close();
 
                     const gpuName = gpuEtags[eTag];
