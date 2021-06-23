@@ -224,7 +224,7 @@ async function checkNbbPaymentGateways() {
 
         } catch (error) {
             console.log(error);
-            bot.sendMessage(chat_id, "An error occurred fetching the NBB Checkout Page");
+            bot.sendMessage(debug_chat_id, "An error occurred fetching the NBB Checkout Page: ```\n" + error.stack + "\n```", { parse_mode: 'MarkdownV2' });
         }
     }
 
