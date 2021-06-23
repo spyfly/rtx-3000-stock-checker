@@ -261,6 +261,15 @@ async function checkCeconomy(storeId) {
                                 continue;
                             }
 
+                            //Product exists?
+                            if (!product)
+                                continue;
+
+                            //Skip 3rd Party Stores
+                            if (!stockDetail.availability.delivery)
+                                continue;
+
+                            //Add to Wishlist
                             var id = stockDetail.productId;
                             if (isWishlist)
                                 id = product.id
@@ -270,14 +279,7 @@ async function checkCeconomy(storeId) {
 
                             if (isWishlist)
                                 wishlistItemIds.push(id);
-
-                            //Product exists?
-                            if (!product)
-                                continue;
-
-                            //Skip 3rd Party Stores
-                            if (!stockDetail.availability.delivery)
-                                continue;
+                            //End of Wishlist Block
 
                             //Skip if out of stock
                             if (stockDetail.availability.delivery.availabilityType == 'NONE')
