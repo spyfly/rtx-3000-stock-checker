@@ -169,7 +169,7 @@ async function checkNbbPaymentGateways() {
         imposter.blackListProxy(proxy, "nbb");
     } else {
         try {
-            const jsonEl = await page.waitForSelector('pre', { timeout: 10000 });
+            const jsonEl = await page.waitForSelector('pre', { timeout: 30000 });
             const json = JSON.parse(await page.evaluate(el => el.textContent, jsonEl));
             if (json.error) {
                 console.log("Couldn't fetch payment methods!")
