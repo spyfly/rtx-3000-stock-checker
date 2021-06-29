@@ -45,8 +45,12 @@ module.exports = {
         }
     },
 
-    getRandomProxy: async function (blacklist = "", localProxy = false) {
+    getRandomProxy: async function (blacklist = "", localProxy = false, residentialProxy = false) {
         var proxies = config.proxies;
+
+        if (residentialProxy)
+            proxies = config.residentialProxies
+
         var blacklistedProxies = [];
         if (blacklist != "") {
             try {

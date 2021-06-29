@@ -370,7 +370,7 @@ async function getBrowserInstance(store, override = false) {
     const browserDetails = await imposter.getBrowserDetails(proxy);
     const browser = await puppeteer.launch({
         userDataDir: '/tmp/rtx-3000-stock-checker/' + proxy.replace(/\./g, "-").replace(/\:/g, "_"),
-        //headless: false,
+        headless: false,
         args: [
             '--no-sandbox',
             '--proxy-server=' + proxy,
@@ -509,12 +509,12 @@ async function getProxy(store, override) {
 
             //Select new proxy
             if (proxy == null || override) {
-                proxy = await imposter.getRandomProxy("", config.ceconomy.local_proxy);
+                proxy = await imposter.getRandomProxy("", config.ceconomy.local_proxy, true);
                 await imposter.storeProxySelection(proxy, store.name)
             }
         } else {
             // New Proxy every time
-            proxy = await imposter.getRandomProxy("", config.ceconomy.local_proxy);
+            proxy = await imposter.getRandomProxy("", config.ceconomy.local_proxy, true);
         }
 
         if (proxy != undefined) {
