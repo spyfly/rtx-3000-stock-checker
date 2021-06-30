@@ -199,7 +199,7 @@ async function checkCeconomy(storeId) {
                                         "X-MMS-Country": "DE",
                                         "X-MMS-Salesline": store.graphQlName
                                     },
-                                    "body": "{\"operationName\":\"LoginProfileUser\",\"variables\":{\"email\":\"" + config.ceconomy.username + "\",\"password\":\"" + config.ceconomy.password + "\"},\"extensions\":{\"pwa\":{\"salesLine\":\"" + store.graphQlName + "\",\"country\":\"DE\",\"language\":\"de\"},\"persistedQuery\":{\"version\":1,\"sha256Hash\":\"48888a2943b5b790b95fce729554b6f0818eda790466ca59b074156da0723746\"}}}",
+                                    "body": "{\"operationName\":\"LoginProfileUser\",\"variables\":{\"email\":\"" + config.ceconomy.username + "\",\"password\":\"" + config.ceconomy.password + "\"},\"extensions\":{\"pwa\":{\"salesLine\":\"" + store.graphQlName + "\",\"country\":\"DE\",\"language\":\"de\"},\"persistedQuery\":{\"version\":1,\"sha256Hash\":\"45a00273b73fec8a92253aad573eec8cfd402ba39b0651bb8e574404266cb485\"}}}",
                                     "method": "POST",
                                     "mode": "cors"
                                 });
