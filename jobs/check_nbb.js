@@ -3,7 +3,6 @@ const TelegramBot = require('node-telegram-bot-api');
 
 const config = require('../config.json');
 const bot = new TelegramBot(config.services.telegram.token);
-const chat_id = config.services.telegram.chat_id;
 const debug_chat_id = config.services.telegram.debug_chat_id;
 
 const { chromium } = require('playwright')
@@ -107,7 +106,7 @@ async function checkNbbApi(storeUrl, apiPage) {
             return deals;
         } catch (error) {
             console.log(error);
-            bot.sendMessage(chat_id, "An error occurred fetching the NBB " + apiPage + " Page");
+            bot.sendMessage(debug_chat_id, "An error occurred fetching the NBB " + apiPage + " Page");
 
             await browser.close();
             return {};
