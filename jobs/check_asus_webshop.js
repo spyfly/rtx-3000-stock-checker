@@ -16,11 +16,16 @@ const { parse } = require('node-html-parser');
 async function main() {
     var usedProxies = [];
 
+    function getRandom(min, max) {
+        return Math.floor(Math.random() * (max - min) + min);
+    }
+
     const asusWebShopUrls = [
-        'https://webshop.asus.com/de/search?sSearch=3060',
-        'https://webshop.asus.com/de/search?sSearch=3070',
-        'https://webshop.asus.com/de/search?sSearch=3080',
-        'https://webshop.asus.com/de/search?sSearch=3090'
+        'https://webshop.asus.com/de/search?sSearch=3060&delivery=1',
+        'https://webshop.asus.com/de/search?sSearch=3070&delivery=1',
+        'https://webshop.asus.com/de/search?sSearch=3080&delivery=1',
+        'https://webshop.asus.com/de/search?sSearch=3090&delivery=1',
+        'https://webshop.asus.com/de/komponenten/grafikkarten/rtx-30-serie/?p=1&o=3&n=48&delivery=1&min=' + getRandom(1, 300) + '.00&max=' + getRandom(2600, 3500) + '.00'
     ];
     const browser = await firefox.launch({
         proxy: {
@@ -50,25 +55,29 @@ async function main() {
             response = playwrightHttpRequest(url).then(async (response) => {
                 const root = parse(response.data);
                 const productsBox = root.querySelector('.listing');
-                const products = productsBox.querySelectorAll('.product--info');
-                console.log("Asus: " + products.length + " Products found.")
 
-                products.forEach(async product => {
-                    const card = {}
-                    card.title = product.querySelector('.product--title').getAttribute("title");
-                    card.href = product.querySelector('.product--title').getAttribute("href");
-                    card.price = parseFloat(product.querySelector('.price--default').textContent.replace(".", "").replace(",", "."));
-                    const id = card.href;
+                //Check if Products Box exists
+                if (productsBox) {
+                    const products = productsBox.querySelectorAll('.product--info');
+                    console.log("Asus: " + products.length + " Products found.")
 
-                    const out_of_stock = product.querySelector('.product--delivery').text.includes('Aktuell nicht verfügbar');
-                    //Card is a 3000 Series
-                    if (card.title.includes("RTX30")) {
-                        if (!out_of_stock) {
-                            console.log(card.title + " for " + card.price);
-                            deals[id] = card;
+                    products.forEach(async product => {
+                        const card = {}
+                        card.title = product.querySelector('.product--title').getAttribute("title");
+                        card.href = product.querySelector('.product--title').getAttribute("href");
+                        card.price = parseFloat(product.querySelector('.price--default').textContent.replace(".", "").replace(",", "."));
+                        const id = card.href;
+
+                        const out_of_stock = product.querySelector('.product--delivery').text.includes('Aktuell nicht verfügbar');
+                        //Card is a 3000 Series
+                        if (card.title.includes("RTX30")) {
+                            if (!out_of_stock) {
+                                console.log(card.title + " for " + card.price);
+                                deals[id] = card;
+                            }
                         }
-                    }
-                });
+                    });
+                }
             });
             responses.push(response);
         }
