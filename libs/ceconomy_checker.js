@@ -185,6 +185,7 @@ async function checkCeconomy(storeId) {
                     if (json.errors && json.errors[0].extensions.exception.status != 400) {
                         if (json.errors[0].extensions.status == 401) {
                             console.log("Wishlist requires login!");
+                            /*
                             const resp = await apiPage.evaluate(async (store, uuid, apolloGraphVersion, config) => {
                                 return await fetch("https://" + location.host + "/api/v1/graphql", {
                                     "credentials": "include",
@@ -205,6 +206,14 @@ async function checkCeconomy(storeId) {
                                 });
                             }, store, uuidv4(), apolloGraphVersion, config);
                             console.log(resp);
+                            */
+                            await apiPage.setCookie({
+                                "name": "a",
+                                "value": config.ceconomy[store.name + "_cookie"],
+                                "secure": true,
+                                "httpOnly": true,
+                                "hostOnly": true
+                            });
                         }
                         retry++;
                         console.log(url)
