@@ -16,8 +16,7 @@
         "proxies": false
     },
     "ceconomy": {
-        "cron": "*/20 * 4-21 * * *",
-        "check_interval": "60s",
+        "check_interval": "20s",
         "proxies": false,
         "store_proxy": false
     },

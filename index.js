@@ -26,12 +26,12 @@ const bree = new Bree({
     },
     {
       name: 'check_mediamarkt',
-      cron: config.ceconomy.cron,
+      interval: config.ceconomy.check_interval,
       hasSeconds: true
     },
     {
       name: 'check_saturn',
-      cron: config.ceconomy.cron,
+      interval: config.ceconomy.check_interval,
       hasSeconds: true
     }
   ]
