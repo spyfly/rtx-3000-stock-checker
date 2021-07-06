@@ -66,7 +66,7 @@ async function checkCeconomy(storeId) {
                 "gridSize": "Small",
                 "storeId": null
             }
-            const url = "https://" + store.url + "/api/v1/graphql?operationName=GetProductCollectionContent&variables=" + encodeURIComponent(JSON.stringify(itemObj)) + "&extensions=" + encodeURIComponent('{"pwa":{"salesLine":"' + store.graphQlName + '","country":"DE","language":"de"},"persistedQuery":{"version":1,"sha256Hash":"a05fe63c78d817b33a6b38cf4d83b49ecfb9f544d7343b2ed44474c6ebe6f12c"}}')
+            const url = "https://" + store.url + "/api/v1/graphql?anti-cache=" + new Date().getTime() + "&operationName=GetProductCollectionContent&variables=" + encodeURIComponent(JSON.stringify(itemObj)) + "&extensions=" + encodeURIComponent('{"pwa":{"salesLine":"' + store.graphQlName + '","country":"DE","language":"de"},"persistedQuery":{"version":1,"sha256Hash":"a05fe63c78d817b33a6b38cf4d83b49ecfb9f544d7343b2ed44474c6ebe6f12c"}}')
             urls.push(url);
         }
 
