@@ -56,11 +56,9 @@ async function checkCeconomy(storeId) {
         var productsChecked = 0;
         var urls = [];
         let time = performance.now();
-        var [browser, apiPage, proxy, apolloGraphVersion, productIds] = await getBrowserInstance(store);
+        var [browser, apiPage, proxy, apolloGraphVersion, productIds, productCollections] = await getBrowserInstance(store);
 
-        /*
-        Currently broken
-        for (const collectionId of collectionIds) {
+        for (const collectionId of productCollections) {
             const itemObj = {
                 "id": collectionId,
                 "limit": 30,
@@ -68,10 +66,9 @@ async function checkCeconomy(storeId) {
                 "gridSize": "Small",
                 "storeId": null
             }
-            const url = "https://" + store.url + "/api/v1/graphql?operationName=GetProductCollectionContent&variables=" + encodeURIComponent(JSON.stringify(itemObj)) + "&extensions=" + encodeURIComponent('{"pwa":{"salesLine":"' + store.graphQlName + '","country":"DE","language":"de"},"persistedQuery":{"version":1,"sha256Hash":"d43ff94a1d080389b881aa250925c3ce694270c9e8fcc3a728a91489a3a8db6a"}}')
+            const url = "https://" + store.url + "/api/v1/graphql?operationName=GetProductCollectionContent&variables=" + encodeURIComponent(JSON.stringify(itemObj)) + "&extensions=" + encodeURIComponent('{"pwa":{"salesLine":"' + store.graphQlName + '","country":"DE","language":"de"},"persistedQuery":{"version":1,"sha256Hash":"a05fe63c78d817b33a6b38cf4d83b49ecfb9f544d7343b2ed44474c6ebe6f12c"}}')
             urls.push(url);
         }
-        */
 
         /*
         var i, j, productsChunk, chunk = 30;
@@ -107,6 +104,7 @@ async function checkCeconomy(storeId) {
 
         urls.push("https://" + store.url + "/api/v1/graphql?anti-cache=" + new Date().getTime() + "&operationName=CategoryV4&variables=%7B%22hasMarketplace%22%3Atrue%2C%22filters%22%3A%5B%22graphicsCard%3A" + encodeURIComponent(checkedGPUs.join(" OR ")) + "%22%2C%22graphicsBrand%3ANVIDIA%22%5D%2C%22storeId%22%3A%22480%22%2C%22wcsId%22%3A%22" + store.gpuCategoryId + "%22%2C%22page%22%3A1%2C%22experiment%22%3A%22mp%22%7D&extensions=%7B%22pwa%22%3A%7B%22salesLine%22%3A%22" + store.graphQlName + "%22%2C%22country%22%3A%22DE%22%2C%22language%22%3A%22de%22%2C%22contentful%22%3Atrue%7D%2C%22persistedQuery%22%3A%7B%22version%22%3A1%2C%22sha256Hash%22%3A%22059e0d217e1245a9221360b7f9c4fe3bc8de9b9e0469931b454d743cc939040c%22%7D%7D");
 
+        /* Disable Wishlist Checking
         for (var i = 0; i < 7; i++) {
             var vars = {
                 hasMarketplace: true,
@@ -129,6 +127,7 @@ async function checkCeconomy(storeId) {
             };
             urls.push("https://" + store.url + "/api/v1/graphql?anti-cache=" + new Date().getTime() + "&operationName=WishlistItems&variables=" + JSON.stringify(vars) + "&extensions=" + JSON.stringify(extensions))
         }
+        */
 
         var wishlistItemIds = [];
 
@@ -319,6 +318,7 @@ async function checkCeconomy(storeId) {
         //Processing Notifications
         await deal_notify(deals, store.name + '_webshop_deals', 'ceconomy');
 
+        /*
         var missingItems = [];
         for (const productId of productIds) {
             if (!wishlistItemIds.includes(productId)) {
@@ -350,6 +350,7 @@ async function checkCeconomy(storeId) {
         }
 
         console.log(missingItems.length + " Items missing from Wishlist at " + store.name)
+        */
 
         console.log(productsChecked + " " + store.name + ` Deals processed in ${((performance.now() - time) / 1000).toFixed(2)} s`)
     } catch (error) {
@@ -409,8 +410,9 @@ async function getBrowserInstance(store, override = false) {
     if (apolloGraphVersionLastUpdate + 60 * 60 > now && !override) {
         try {
             productIds = JSON.parse(await db.get(key + '_product_ids'));
+            productCollections = JSON.parse(await db.get(key + '_product_collections'));
             apolloGraphVersion = await db.get(key + '_api_version');
-            return [browser, page, proxy, apolloGraphVersion, productIds];
+            return [browser, page, proxy, apolloGraphVersion, productIds, productCollections];
         } catch {
             console.log("Failed fetching " + key + " (Key Value Store not initialized yet propably)");
         }
@@ -488,8 +490,13 @@ async function getBrowserInstance(store, override = false) {
         // Grab Product Ids from Overview Page
         const graphQlData = await page.evaluate(() => window.__PRELOADED_STATE__.apolloState);
         var productIds = [];
+        var productCollections = [];
+
         for (const [key, value] of Object.entries(graphQlData)) {
             if (key.includes("GraphqlProductCollection:")) {
+                console.log("Found Product Collection: " + value.id);
+                productCollections.push(value.id);
+
                 const productCollectionItems = value.items.visible.concat(value.items.hidden);
                 //console.log(productCollectionItems);
                 for (const productCollectionItem of productCollectionItems) {
@@ -500,8 +507,9 @@ async function getBrowserInstance(store, override = false) {
         }
 
         await db.put(key + '_product_ids', JSON.stringify(productIds));
+        await db.put(key + '_product_collections', JSON.stringify(productCollections));
 
-        return [browser, page, proxy, apolloGraphVersion, productIds];
+        return [browser, page, proxy, apolloGraphVersion, productIds, productCollections];
     } catch {
         console.log("Getting new Browser Instance after being unable to fetch ApolloGraphVersion for " + store.name);
         await browser.close();
