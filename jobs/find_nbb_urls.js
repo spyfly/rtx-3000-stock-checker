@@ -52,6 +52,11 @@ async function main() {
             //Using a proxy
             if (config.nbb.proxies) {
                 proxy = await imposter.getRandomProxy();
+
+                if (productId % 10 == 0) {
+                    await imposter.generateNewDetails(proxy);
+                }
+
                 browserDetails = await imposter.getBrowserDetails(proxy);
                 axios_config.httpsAgent = new SocksProxyAgent(proxy);
                 axios_config.headers = { 'User-Agent': browserDetails.userAgent }
@@ -60,6 +65,7 @@ async function main() {
                 const eTag = res.headers["etag"];
                 const id = res.config.url.split("-p")[1];
                 if (gpuEtags[eTag]) {
+                    /*
                     const page = await context.newPage();
                     await page.goto("https://www.notebooksbilliger.de/Produkte/Grafikkarten/action");
                     await page.setContent(`<form method="post" action="https://www.notebooksbilliger.de/Produkte/Grafikkarten/action/add_product">
@@ -74,7 +80,12 @@ async function main() {
 
                     const gpuName = gpuEtags[eTag];
                     console.log(gpuName + ": " + url);
+                    */
+                    const gpuName = gpuEtags[eTag];
+                    console.log("Found ID for " + gpuName + ": " + id);
                 }
+            }).catch(function (error) {
+                console.log(error.message);
             });
             requests.push(req);
         }

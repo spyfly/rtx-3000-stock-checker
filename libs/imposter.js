@@ -18,7 +18,7 @@ module.exports = {
     },
 
     generateNewDetails: async function (proxy) {
-        console.log("Generating new Browser Details for " + proxy)
+        //console.log("Generating new Browser Details for " + proxy)
         const userAgent = new UserAgent({ deviceCategory: 'desktop' });
         details = {
             userAgent: userAgent.userAgent,
