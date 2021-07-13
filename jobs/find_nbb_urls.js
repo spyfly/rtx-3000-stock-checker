@@ -4,17 +4,15 @@ const { SocksProxyAgent } = require('socks-proxy-agent');
 
 const TelegramBot = require('node-telegram-bot-api');
 
-const { performance } = require('perf_hooks');
-
 const config = require('../config.json');
 const bot = new TelegramBot(config.services.telegram.token);
-const chat_id = config.services.telegram.chat_id;
+const deals_chat_id = config.services.telegram.deals_chat_id;
 const debug_chat_id = config.services.telegram.debug_chat_id;
+
+const { performance } = require('perf_hooks');
 
 const level = require('level-party')
 var db = level('./status', { valueEncoding: 'json' })
-
-const { parse } = require('node-html-parser');
 
 const imposter = require('../libs/imposter.js');
 
@@ -34,9 +32,41 @@ const gpuEtags = {
 const cdnUrl = "https://media.nbb-cdn.de/product_images/listing_image/-p";
 const productsUrl = "https://m.notebooksbilliger.de/products_id/";
 
+const startOffset = 1000;
+const checkingRange = 5000;
+
 async function main() {
+    const time = performance.now();
+
     var axios_config = {};
     var requests = [];
+
+    var drop_urls = {}
+    try {
+        drop_urls = JSON.parse(await db.get("nbb_drop_urls"));
+    } catch {
+        console.log("Failed fetching nbb_drop_urls (Key Value Store not initialized yet propably)");
+    }
+
+    // Fill Array
+    if (Object.values(drop_urls).length != 6) {
+        for (const card of Object.values(gpuEtags)) {
+            drop_urls[card] = {
+                id: 725000
+            }
+        }
+    }
+
+    var max_id = 0;
+
+    for (const entry of Object.values(drop_urls)) {
+        if (entry.id > max_id)
+            max_id = entry.id;
+    }
+
+    // Deduct 1000 to catch other IDs aswell
+    max_id -= startOffset;
+    console.log("Starting ID: " + max_id)
 
     const context = await puppeteer.launch({
         userDataDir: '/tmp/nbb-cart-checker/',
@@ -49,7 +79,7 @@ async function main() {
 
     try {
         //Using a proxy
-        for (var productId = 725000; productId < 730000; productId++) {
+        for (var productId = max_id; productId < max_id + checkingRange; productId++) {
             //Using a proxy
             if (config.nbb.proxies) {
                 proxy = await imposter.getRandomProxy();
@@ -66,24 +96,27 @@ async function main() {
                 const eTag = res.headers["etag"];
                 const id = res.config.url.split("-p")[1];
                 if (gpuEtags[eTag]) {
-                    
+
                     const page = await context.newPage();
-                    await page.goto("https://www.notebooksbilliger.de/Produkte/Grafikkarten/action");
-                    await page.setContent(`<form method="post" action="https://www.notebooksbilliger.de/Produkte/Grafikkarten/action/add_product">
-                        <input type="hidden" name="products_id" value="${id}">
-                        <button type="submit" id="add_to_cart">
-                            In den Warenkorb
-                        </button>
-                    </form>`);
-                    await Promise.all([page.click('#add_to_cart'), page.waitForNavigation({ timeout: 120000 })]);
-                    const url = (await page.url()).split("/produkte/grafikkarten")[0];
+                    await page.goto(`https://m.notebooksbilliger.de/products_id/${id}`);
+                    const url = await page.url();
                     await page.close();
 
                     const gpuName = gpuEtags[eTag];
                     console.log(gpuName + ": " + url);
-                    
+
                     //const gpuName = gpuEtags[eTag];
                     //console.log("Found ID for " + gpuName + ": " + id);
+                    if (drop_urls[gpuName].id != id) {
+                        drop_urls[gpuName] = {
+                            id: id,
+                            href: url
+                        }
+
+                        console.log("Found new Link!");
+                        await bot.sendMessage(deals_chat_id, '🔎 Found new Link for <a href="' + url + '">' + gpuName + '</a> 😯', { parse_mode: 'HTML', disable_web_page_preview: true })
+                        console.log("Sent notify!");
+                    }
                 }
             }).catch(function (error) {
                 console.log(error.message + "| Proxy: " + proxy);
@@ -92,9 +125,12 @@ async function main() {
         }
 
         await Promise.all(requests);
+        console.log("Storing NBB Drop URLs");
+        await db.put("nbb_drop_urls", JSON.stringify(drop_urls));
+        await db.close();
+
         await context.close();
-        //console.log("Checked " + cardUrls.length + ` NBB Product Images directly in ${((performance.now() - time) / 1000).toFixed(2)} s`);
-        //db.close();
+        console.log("Checked " + checkingRange + ` NBB Product Images directly in ${((performance.now() - time) / 1000).toFixed(2)} s`);
     } catch (error) {
         console.log(error);
         bot.sendMessage(debug_chat_id, "An error occurred scanning for NBB Product IDs: ```\n" + error.stack + "\n```", { parse_mode: 'MarkdownV2' });

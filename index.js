@@ -16,6 +16,10 @@ const bree = new Bree({
       interval: config.nbb.check_interval,
     },
     {
+      name: 'find_nbb_urls',
+      interval: config.nbb.search_interval,
+    },
+    {
       name: 'check_asus_webshop',
       interval: config.asus_webshop.check_interval,
     },
