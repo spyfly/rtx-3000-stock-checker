@@ -49,7 +49,7 @@ async function main() {
 
     try {
         //Using a proxy
-        for (var productId = 721000; productId < 730000; productId++) {
+        for (var productId = 725000; productId < 730000; productId++) {
             //Using a proxy
             if (config.nbb.proxies) {
                 proxy = await imposter.getRandomProxy();
