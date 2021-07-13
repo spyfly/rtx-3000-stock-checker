@@ -86,7 +86,7 @@ async function main() {
                     //console.log("Found ID for " + gpuName + ": " + id);
                 }
             }).catch(function (error) {
-                console.log(error.message);
+                console.log(error.message + "| Proxy: " + proxy);
             });
             requests.push(req);
         }
