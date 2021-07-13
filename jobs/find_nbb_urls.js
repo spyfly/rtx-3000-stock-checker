@@ -25,6 +25,7 @@ puppeteer.use(StealthPlugin())
 const gpuEtags = {
     "49/e6/d2_5be6881a43c353622f07b3880c": "NVIDIA GeForce RTX 3060 Ti FE",
     "e4/96/ef_87beb9dff11774b0660f0cad59": "NVIDIA GeForce RTX 3070 FE",
+    "1d/b7/87_c3e8cbc3bbaf412047c62a185f": "NVIDIA GeForce RTX 3070 Ti FE",
     "64/18/9b_3835aa2dccdc32ebaa51df5e61": "NVIDIA GeForce RTX 3080 FE",
     "be/0b/59_ea32e78bc85a790494e1bcb6b6": "NVIDIA GeForce RTX 3080 Ti FE",
     "ab/d4/93_4adb54045e4bd31ae0e961287c": "NVIDIA GeForce RTX 3090 FE"
