@@ -19,6 +19,7 @@ const imposter = require('../libs/imposter.js');
 const crypto = require("crypto");
 
 const level = require('level-party')
+const db = level('./status', { valueEncoding: 'json' })
 
 function getRandom(min, max) {
     return Math.floor(Math.random() * (max - min) + min);
@@ -44,10 +45,14 @@ function getRandom(min, max) {
             });
     }
 
+    tasks.push(checkNbbFoundersEditionPages().then((deals) => {
+        Object.assign(nbbDeals, deals);
+    }));
     tasks.push(checkNbbPaymentGateways());
 
     await Promise.all(tasks);
     await deal_notify(nbbDeals, 'nbb_deals', 'nbb');
+    await db.close();
 })();
 
 async function checkNbbApi(storeUrl, apiPage) {
@@ -64,6 +69,8 @@ async function checkNbbApi(storeUrl, apiPage) {
         timezoneId: 'Europe/Berlin'
     };
     var proxy = "default";
+
+    drop_urls = JSON.parse(await db.get("nbb_drop_url_array"));
 
     //Using a proxy
     if (config.nbb.proxies) {
@@ -192,7 +199,6 @@ async function checkNbbPaymentGateways() {
                     payment_methods.push(payment_module.id);
                 }
 
-                const db = level('./status', { valueEncoding: 'json' })
                 var old_payment_methods = {}
                 try {
                     old_payment_methods = JSON.parse(await db.get("nbb_payment_methods"));
@@ -218,7 +224,6 @@ async function checkNbbPaymentGateways() {
                 }
 
                 await db.put("nbb_payment_methods", JSON.stringify(payment_methods));
-                await db.close();
             }
 
         } catch (error) {
@@ -244,7 +249,98 @@ async function performNbbLogin(page) {
     //console.log(resp);
 }
 
+async function checkNbbFoundersEditionPages() {
+    drop_urls = JSON.parse(await db.get("nbb_drop_url_array"));
+    /*drop_urls["NVLink Bridge"] = {
+        "269374": "https://www.notebooksbilliger.de/nvidia+sli+hb+bridge+269374"
+    }*/
 
+    var browser_context = {
+        userAgent: config.browser.user_agent,
+        viewport: {
+            width: 1280,
+            height: 720
+        },
+        extraHTTPHeaders: {
+            DNT: "1"
+        },
+        locale: 'de-DE',
+        timezoneId: 'Europe/Berlin'
+    };
+
+    var proxy = "default";
+
+    if (config.nbb.proxies) {
+        browser_context.proxy = {
+            server: proxy
+        };
+    }
+
+    const browser = await chromium.launch(browser_context);
+    var tasks = [];
+    var deals = {};
+
+    for (const [card, links] of Object.entries(drop_urls)) {
+        //console.log(card);
+        for (const [id, link] of Object.entries(links)) {
+            //console.log(link)
+            //Using a proxy
+            const task = (async () => {
+                if (config.nbb.proxies) {
+                    proxy = await imposter.getRandomProxy("nbb");
+                    const browserDetails = await imposter.getBrowserDetails(proxy);
+                    if (proxy != undefined) {
+                        browser_context.proxy = {
+                            server: proxy
+                        };
+                        browser_context.userAgent = browserDetails.userAgent;
+                        browser_context.viewport = browserDetails.viewport;
+                    } else {
+                        proxy = "default";
+                        console.log("All Proxies blacklisted on NBB.com!");
+                        bot.sendMessage(debug_chat_id, "All Proxies blacklisted on NBB.com!");
+                    }
+                }
+
+                const context = await browser.newContext(browser_context);
+                const page = await context.newPage();
+                await page.goto(link);
+                const response = await page.content();
+
+                if (response.includes("client has been blocked by bot protection")) {
+                    console.log("Blocked by Bot Protection on the NBB " + apiPage + " Page | Proxy: " + proxy);
+                    //await page.screenshot({ path: 'debug_' + apiPage + '_blocked.png' });
+                    //bot.sendPhoto(debug_chat_id, 'debug_' + apiPage + '_blocked.png', { caption: "Blocked by Bot Protection on the NBB " + apiPage + " Page | Proxy: " + proxy });
+                    //console.log("Generating new User Agent for Proxy: " + proxy);
+                    //await imposter.generateNewDetails(proxy);
+                    imposter.blackListProxy(proxy, "nbb");
+                } else {
+                    var status = "Unknown";
+                    if (response.includes("Leider ist dieser Artikel nicht mehr verfügbar.")) {
+                        status = "Product page inactive!";
+                    } else if (response.includes("js-pdp-head-add-to-cart")) {
+                        const price = parseFloat(response.match(/data-price-formatted="[^"]*/)[0].replace('data-price-formatted="', ""));
+                        status = "In Stock!";
+                        deals[id] = {
+                            title: card,
+                            href: link,
+                            price: price
+                        }
+                    } else if (response.includes("Dieses Produkt ist leider ausverkauft.")) {
+                        status = "Sold out!";
+                    }
+
+                    console.log(link + " | " + status)
+                }
+                await context.close();
+            })();
+            tasks.push(task);
+        }
+    }
+    await Promise.all(tasks);
+    await browser.close();
+    return deals;
+}
 
 async function addProductToCart(page, productId) {
     const details = {

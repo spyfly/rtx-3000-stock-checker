@@ -61,7 +61,7 @@ module.exports = {
                     return !blacklistedProxies.includes(el);
                 });
             } catch {
-                console.log("Failed getting blacklisted proxies for blacklist: " + blacklist);
+                //console.log("Failed getting blacklisted proxies for blacklist: " + blacklist);
             }
         }
         if (localProxy) {
@@ -70,7 +70,7 @@ module.exports = {
                     return el.includes("192.168.");
                 });
             } catch {
-                console.log("Failed getting blacklisted proxies for blacklist: " + blacklist);
+                //console.log("Failed getting blacklisted proxies for blacklist: " + blacklist);
             }
         }
         const proxyCount = proxies.length
