@@ -43,7 +43,7 @@ async function main() {
 
     var drop_urls = {}
     try {
-        drop_urls = JSON.parse(await db.get("nbb_drop_urls"));
+        drop_urls = JSON.parse(await db.get("nbb_drop_url_array"));
     } catch {
         console.log("Failed fetching nbb_drop_urls (Key Value Store not initialized yet propably)");
     }
@@ -51,17 +51,21 @@ async function main() {
     // Fill Array
     if (Object.values(drop_urls).length != 6) {
         for (const card of Object.values(gpuEtags)) {
-            drop_urls[card] = {
-                id: 725000
-            }
+            drop_urls[card] = {}
         }
     }
 
-    var max_id = 0;
+    console.log(drop_urls);
 
-    for (const entry of Object.values(drop_urls)) {
-        if (entry.id > max_id)
-            max_id = entry.id;
+
+
+    var max_id = 725000;
+
+    for (const ids of Object.values(drop_urls)) {
+        for (const id of Object.keys(ids)) {
+            if (id > max_id)
+                max_id = id;
+        }
     }
 
     // Deduct 1000 to catch other IDs aswell
@@ -99,7 +103,27 @@ async function main() {
 
                     const page = await context.newPage();
                     await page.goto(`https://m.notebooksbilliger.de/products_id/${id}`);
-                    const url = await page.url();
+                    var url = await page.url();
+
+                    if (url.includes("https://m.notebooksbilliger.de/products_id/")) {
+                        var retry = 0;
+                        while (retry < 5) {
+                            await page.goto("https://www.notebooksbilliger.de/Produkte/Grafikkarten/action");
+                            await page.setContent(`<form method="post" action="https://www.notebooksbilliger.de/Produkte/Grafikkarten/action/add_product">
+                                                <input type="hidden" name="products_id" value="${id}">
+                                                <button type="submit" id="add_to_cart">
+                                                    In den Warenkorb
+                                                </button>
+                                            </form>`);
+                            await Promise.all([page.click('#add_to_cart'), page.waitForNavigation({ timeout: 120000 })]);
+                            url = (await page.url()).split("/produkte/grafikkarten")[0];
+                            if (url.includes("founders+edition")) {
+                                retry = 10;
+                            } else {
+                                retry++;
+                            }
+                        }
+                    }
                     await page.close();
 
                     const gpuName = gpuEtags[eTag];
@@ -107,11 +131,8 @@ async function main() {
 
                     //const gpuName = gpuEtags[eTag];
                     //console.log("Found ID for " + gpuName + ": " + id);
-                    if (drop_urls[gpuName].id != id) {
-                        drop_urls[gpuName] = {
-                            id: id,
-                            href: url
-                        }
+                    if (!drop_urls[gpuName][id]) {
+                        drop_urls[gpuName][id] = url
 
                         console.log("Found new Link!");
                         await bot.sendMessage(deals_chat_id, '🔎 Found new Link for <a href="' + url + '">' + gpuName + '</a> 😯', { parse_mode: 'HTML', disable_web_page_preview: true })
@@ -126,7 +147,7 @@ async function main() {
 
         await Promise.all(requests);
         console.log("Storing NBB Drop URLs");
-        await db.put("nbb_drop_urls", JSON.stringify(drop_urls));
+        await db.put("nbb_drop_url_array", JSON.stringify(drop_urls));
         await db.close();
 
         await context.close();
