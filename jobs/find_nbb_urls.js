@@ -116,7 +116,7 @@ async function main() {
                                                 </button>
                                             </form>`);
                             await Promise.all([page.click('#add_to_cart'), page.waitForNavigation({ timeout: 120000 })]);
-                            url = (await page.url()).split("/produkte/grafikkarten")[0];
+                            url = "https://www.notebooksbilliger.de/" + (await page.url()).match(/nvidia[^/]*/)[0];
                             if (url.includes("founders+edition")) {
                                 retry = 10;
                             } else {
