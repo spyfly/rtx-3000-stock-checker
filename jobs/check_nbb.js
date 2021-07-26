@@ -13,6 +13,7 @@ puppeteer.use(StealthPlugin())
 
 const nbb_parser = require('../libs/nbb_parser.js');
 const deal_notify = require('../libs/deal_notify.js');
+const wr_circumvention = require('../libs/nbb_wr_circumvention.js');
 
 const imposter = require('../libs/imposter.js');
 
@@ -166,6 +167,13 @@ async function checkNbbPaymentGateways() {
     await page.goto("https://m.notebooksbilliger.de/checkout/init");
 
     const response = await page.content();
+    const wr_circumvented = await wr_circumvention(page);
+    if (wr_circumvented) {
+        console.log("Drop incoming (Waiting Room)")
+        message = `🌠 <b>Alle Mann auf Gefechtsstation!</b>\n<a href="https://shop.nvidia.com/de-de/geforce/store/">NVIDIA Founders Edition Drop</a> incoming! Ein Warteraum ist aufgetaucht!`;
+        await bot.sendMessage(config.services.telegram.deals_chat_id, message, { parse_mode: 'HTML', disable_web_page_preview: true })
+    }
+
     if (response.includes("client has been blocked by bot protection")) {
         console.log("Blocked by Bot Protection on the NBB Checkout Page | Proxy: " + proxy);
         //await page.screenshot({ path: 'debug_' + apiPage + '_blocked.png' });
