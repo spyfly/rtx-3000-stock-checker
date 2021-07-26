@@ -94,7 +94,7 @@ async function checkNbbApi(storeUrl, apiPage) {
     const context = await browser.newContext(browser_context);
     const page = await context.newPage();
     await page.goto(storeUrl);
-    await wr_circumvention(page);
+    await wr_circumvention(context, true);
 
     const response = await page.content();
     if (response.includes("client has been blocked by bot protection")) {
@@ -316,7 +316,7 @@ async function checkNbbFoundersEditionPages() {
                 const context = await browser.newContext(browser_context);
                 const page = await context.newPage();
                 await page.goto(link);
-                await wr_circumvention(page);
+                await wr_circumvention(context, true);
                 const response = await page.content();
 
                 if (response.includes("client has been blocked by bot protection")) {
