@@ -94,6 +94,7 @@ async function checkNbbApi(storeUrl, apiPage) {
     const context = await browser.newContext(browser_context);
     const page = await context.newPage();
     await page.goto(storeUrl);
+    await wr_circumvention(page);
 
     const response = await page.content();
     if (response.includes("client has been blocked by bot protection")) {
@@ -194,6 +195,8 @@ async function checkNbbPaymentGateways() {
                     if (json.cartCount == 0) {
                         console.log("Require adding product to cart!");
                         await page.goto('https://m.notebooksbilliger.de/msi+geforce+gt+710+1gd3h+lp');
+                        await wr_circumvention(page);
+
                         await page.click('.qa-product-add-to-shopping-cart-pdp-regular');
                         console.log("Added product to cart!");
                     }
@@ -313,6 +316,7 @@ async function checkNbbFoundersEditionPages() {
                 const context = await browser.newContext(browser_context);
                 const page = await context.newPage();
                 await page.goto(link);
+                await wr_circumvention(page);
                 const response = await page.content();
 
                 if (response.includes("client has been blocked by bot protection")) {
