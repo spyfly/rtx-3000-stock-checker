@@ -382,7 +382,6 @@ async function getBrowserInstance(store, override = false) {
         userDataDir: '/tmp/rtx-3000-stock-checker/' + proxy.replace(/\./g, "-").replace(/\:/g, "_"),
         headless: false,
         args: [
-            '--no-sandbox',
             '--proxy-server=' + proxy,
             '--lang=de-DE'
         ],

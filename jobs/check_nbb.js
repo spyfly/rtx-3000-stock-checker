@@ -159,7 +159,6 @@ async function checkNbbPaymentGateways() {
     const context = await puppeteer.launch({
         userDataDir: '/tmp/nbb-cart-checker/',
         args: [
-            '--no-sandbox',
             '--proxy-server=' + proxy,
             '--lang=de-DE'
         ],

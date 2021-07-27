@@ -75,7 +75,6 @@ async function main() {
     const context = await puppeteer.launch({
         userDataDir: '/tmp/nbb-cart-checker/',
         args: [
-            '--no-sandbox',
             '--proxy-server=' + await imposter.getRandomProxy(),
             '--lang=de-DE'
         ],
