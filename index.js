@@ -37,6 +37,10 @@ const bree = new Bree({
       name: 'check_saturn',
       interval: config.ceconomy.check_interval,
       hasSeconds: true
+    },
+    {
+      name: 'send_coffee',
+      cron: '0 14 * * *'
     }
   ]
 });
