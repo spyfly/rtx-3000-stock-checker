@@ -2,6 +2,7 @@ process.env["NTBA_FIX_319"] = 1;
 const axios = require('axios').default;
 const { performance } = require('perf_hooks');
 const { SocksProxyAgent } = require('socks-proxy-agent');
+const { HttpsProxyAgent } = require('hpagent')
 
 const TelegramBot = require('node-telegram-bot-api');
 
@@ -14,6 +15,9 @@ const deal_notify = require('../libs/deal_notify.js');
 const imposter = require('../libs/imposter.js');
 const fs = require('fs').promises;
 
+const got = require('got');
+const http2wrapper = require("http2-wrapper");
+
 const nvShopUrl = 'https://www.nvidia.com/de-de/shop/geforce/';
 const nvStockCheckerUrl = 'https://api.nvidia.partners/edge/product/search?page=1&limit=9&locale=de-de';
 
@@ -23,20 +27,23 @@ async function main() {
     }
 
     //Using a proxy
-    if (config.nvidia.proxies) {
-        proxy = await imposter.getRandomProxy();
-        browserDetails = await imposter.getBrowserDetails(proxy);
-        axios_config.httpsAgent = new SocksProxyAgent(proxy);
-        axios_config.headers = { 'User-Agent': browserDetails.userAgent }
-    }
+    //if (config.nvidia.proxies) {
+    proxy = await imposter.getRandomProxy();
+    browserDetails = await imposter.getBrowserDetails(proxy);
+    axios_config.httpsAgent = new SocksProxyAgent(proxy);
 
     var deals = {};
     let time = performance.now();
-    const response = await axios.get(nvStockCheckerUrl, axios_config);
+    const json = await got.get(nvStockCheckerUrl, {
+        headers: {
+            'User-Agent': browserDetails.userAgent
+        },
+        http2: true,
+    }).json();
+    //console.log(json)
     console.log(`Fetched NV_Stock in ${((performance.now() - time)).toFixed(0)} ms`);
 
     try {
-        const json = response.data;
         const products = json.searchedProducts.productDetails;
         products.push(json.searchedProducts.featuredProduct);
         products.forEach(function (product) {
