@@ -19,7 +19,7 @@ const got = require('got');
 const http2wrapper = require("http2-wrapper");
 
 const nvShopUrl = 'https://www.nvidia.com/de-de/shop/geforce/';
-const nvStockCheckerUrl = 'https://api.nvidia.partners/edge/product/search?page=1&limit=9&locale=de-de';
+const nvStockCheckerUrl = 'https://api.nvidia.partners/edge/product/search?page=1&limit=9&locale=de-de&manufacturer=NVIDIA&time=' + performance.now();
 
 async function main() {
     var axios_config = {
