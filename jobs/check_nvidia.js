@@ -37,7 +37,7 @@ async function main() {
     const json = await got.get(nvStockCheckerUrl, {
         headers: {
             'User-Agent': browserDetails.userAgent,
-            'Accept-Language:': 'de,en-US;q=0.7,en;q=0.3'
+            'Accept-Language': 'de,en-US;q=0.7,en;q=0.3'
         },
         http2: true,
     }).json();
