@@ -319,7 +319,7 @@ async function checkNbbFoundersEditionPages() {
                 const response = await page.content();
 
                 if (response.includes("client has been blocked by bot protection")) {
-                    console.log("Blocked by Bot Protection on the NBB " + apiPage + " Page | Proxy: " + proxy);
+                    console.log("Blocked by Bot Protection on the NBB " + page + " Page | Proxy: " + proxy);
                     //await page.screenshot({ path: 'debug_' + apiPage + '_blocked.png' });
                     //bot.sendPhoto(debug_chat_id, 'debug_' + apiPage + '_blocked.png', { caption: "Blocked by Bot Protection on the NBB " + apiPage + " Page | Proxy: " + proxy });
                     //console.log("Generating new User Agent for Proxy: " + proxy);
