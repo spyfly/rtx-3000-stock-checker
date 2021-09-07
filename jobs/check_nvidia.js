@@ -17,9 +17,8 @@ const fs = require('fs').promises;
 
 const got = require('got');
 const http2wrapper = require("http2-wrapper");
+const nvStockCheckerUrl = 'https://api.store.nvidia.com/partner/v1/feinventory?skus=DE&locale=DE&time=' + performance.now();
 
-const nvShopUrl = 'https://www.nvidia.com/de-de/shop/geforce/';
-const nvStockCheckerUrl = 'https://api.nvidia.partners/edge/product/search?page=1&limit=9&locale=de-de&manufacturer=NVIDIA&time=' + performance.now();
 
 async function main() {
     var axios_config = {
@@ -45,53 +44,70 @@ async function main() {
     console.log(`Fetched NV_Stock in ${((performance.now() - time)).toFixed(0)} ms`);
 
     try {
-        const products = json.searchedProducts.productDetails;
-        products.push(json.searchedProducts.featuredProduct);
+        const products = json.listMap;
         products.forEach(function (product) {
-            if (product.isFounderEdition) {
-                if (config.nvidia.debug)
-                    console.log(product.displayName);
-                var status, message;
-                const cardName = product.displayName.replace("Nvidia RTX ", "");
+            var status, message;
+            let cardName;
+            let name;
+            const sku = product.fe_sku;
+            switch (sku) {
+                case "NVGFT060T_DE":
+                    name = "NVIDIA RTX 3060 Ti Founders Edition";
+                    break;
+                case "NVGFT070_DE":
+                    name = "NVIDIA RTX 3070 Founders Edition";
+                    break;
+                case "NVGFT070T_DE":
+                    name = "NVIDIA RTX 3070 Ti Founders Edition";
+                    break;
+                case "NVGFT080_DE":
+                    name = "NVIDIA RTX 3080 Founders Edition";
+                    break;
+                case "NVGFT080T_DE":
+                    name = "NVIDIA RTX 3080 Ti Founders Edition";
+                    break;
+                case "NVGFT090_DE":
+                    name = "NVIDIA RTX 3090 Founders Edition";
+                    break;
+            }
 
-                if (product.prdStatus != 'out_of_stock' || product.purchaseOption != '' || product.isOffer != false) {
-                    status = "in_stock";
-                    // Add Deal
-                    if (product.retailers.length > 0) {
-                        const stockDetail = product.retailers[0];
-                        const id = stockDetail.productId;
-                        const card = {
-                            title: "NVIDIA GeForce RTX " + cardName + " Founders Edition",
-                            href: stockDetail.purchaseLink,
-                            price: parseFloat(stockDetail.salePrice)
-                        }
-                        deals[id] = card;
-                    }
+            if (config.nvidia.debug)
+                console.log(name);
+            if (product.is_active == "true") {
+                status = "in_stock";
+                // Add Deal
+                const id = sku;
+                const card = {
+                    title: name,
+                    href: product.product_url,
+                    price: parseFloat(product.price)
+                }
+                deals[id] = card;
 
-                    //Log JSON
-                    try {
-                        fs.writeFile('debug_nvidia_fe' + cardName.replace(" ", "_") + '.json', JSON.stringify(product));
-                    } catch (err) {
-                        console.log("Failed storing example JSON for " + cardName)
-                    }
-
-                    if (config.nvidia.debug)
-                        console.log("> Is in stock!")
-                } else {
-                    status = "out_of_stock";
-                    if (config.nvidia.debug)
-                        console.log("> Still out of stock. | Stock Status: " + product.prdStatus)
+                //Log JSON
+                try {
+                    fs.writeFile('debug_nvidia_fe' + cardName.replace(" ", "_") + '.json', JSON.stringify(product));
+                } catch (err) {
+                    console.log("Failed storing example JSON for " + cardName)
                 }
 
-                message = product.displayName + " is " + product.prdStatus + " at " + nvShopUrl;
-
                 if (config.nvidia.debug)
-                    console.log("------------------------------------------------------------------")
+                    console.log("> Is in stock!")
+            } else {
+                status = "out_of_stock";
+                if (config.nvidia.debug)
+                    console.log("> Still out of stock. | Stock Status: " + product.is_active)
             }
+
+            message = product.displayName + " is " + product.prdStatus + " at Nvidia";
+
+            if (config.nvidia.debug)
+                console.log("------------------------------------------------------------------")
+
         });
     } catch (error) {
         console.log(error);
-        bot.sendMessage(debug_chat_id, "An error occurred fetching Nvidias page, cards may be available: " + nvShopUrl);
+        bot.sendMessage(debug_chat_id, "An error occurred fetching Nvidias page, cards may be available");
     }
 
     await deal_notify(deals, 'nvidia_webshop_deals', 'nbb');
