@@ -51,6 +51,9 @@ async function main() {
             let name;
             const sku = product.fe_sku;
             switch (sku) {
+                default:
+                    name = sku;
+                    break;
                 case "NVGFT060T_DE":
                     name = "NVIDIA RTX 3060 Ti Founders Edition";
                     break;
